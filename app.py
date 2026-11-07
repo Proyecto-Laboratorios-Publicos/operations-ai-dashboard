@@ -11,7 +11,7 @@ st.set_page_config(
 st.title("📊 Panel Oficial de Análisis - IPC INDEC")
 st.markdown("""
 Plataforma analítica conectada directamente a la API oficial del **INDEC**. 
-Explora las series temporales separando adecuadamente los tipos de indicadores (variaciones, índices, etc.) para garantizar métricas coherentes.
+Explora las series temporales separando adecuadamente los tipos de indicadores y regiones.
 """)
 
 df_raw = obtener_datos_inflacion()
@@ -23,7 +23,7 @@ if df_raw.empty:
 # Sidebar de control y filtros estrictos
 st.sidebar.header("🎛️ Filtros Oficiales")
 
-# 1. Selector de Tipo de Indicador (Evita mezclar índices absolutos con variaciones porcentuales)
+# 1. Selector de Tipo de Indicador
 tipos_ind = sorted(df_raw["tipo_de_indicador_descripcion"].dropna().unique().tolist())
 tipo_ind_sel = st.sidebar.selectbox(
     "Tipo de Indicador (Obligatorio):",
@@ -33,7 +33,7 @@ tipo_ind_sel = st.sidebar.selectbox(
 # Filtrar por el tipo de indicador seleccionado
 df_ind = df_raw[df_raw["tipo_de_indicador_descripcion"] == tipo_ind_sel]
 
-# 2. Filtro por Región
+# 2. Filtrar por Región
 regiones = sorted(df_ind["region"].dropna().unique().tolist())
 region_sel = st.sidebar.selectbox(
     "Región Estadística:",
@@ -60,7 +60,6 @@ with tab1:
     if not df_ind.empty and "valor" in df_ind.columns:
         descripciones = sorted(df_ind["descripcion"].dropna().unique().tolist())
         
-        # Seleccionar por defecto categorías de nivel general si existen
         default_desc = [d for d in descripciones if "nivel general" in d.lower()]
         if not default_desc:
             default_desc = descripciones[:3]
