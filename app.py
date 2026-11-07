@@ -38,7 +38,6 @@ with col1:
         label=f"Inflación Mensual ({ultimo_mes})", 
         value=f"{ultima_inflacion}%", 
         delta=f"{delta_inflacion}%", 
-        delta_inverse=True
     )
 with col2:
     st.metric(
