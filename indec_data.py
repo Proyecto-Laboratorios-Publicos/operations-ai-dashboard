@@ -50,7 +50,7 @@ def obtener_datos_inflacion():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
         
-        # Limpieza de espacios en blanco en columnas de texto
+        # Limpieza de espacios en blanco en columnas de texto y nulos
         campos_texto = [
             "clasificador", "nivel", "codigo", "descripcion", "periodo", 
             "indicador", "tipo_de_indicador", "tipo_de_indicador_descripcion", 
