@@ -36,14 +36,13 @@ if not df_raw.empty:
   if "mes" in df_proc.columns and "anio" in df_proc.columns:
     df_proc["Mes"] = df_proc["mes"].map(meses_dict) + " " + df_proc["anio"].astype(int).astype(str)
 
-  # Si la API ya trae el Nivel General como una métrica directa, la filtramos y preparamos
+  # Filtramos la serie de Nivel General y ordenamos cronológicamente de forma correcta
   if "descripcion" in df_proc.columns and "valor" in df_proc.columns:
-    # Filtramos la serie de Nivel General para las tarjetas principales
     df_general = df_proc[df_proc["descripcion"].str.contains("Nivel general", case=False, na=False)].copy()
     
     if not df_general.empty:
+      # Ordenamos de forma ascendente para que el último registro sea el más actual
       df_indec = df_general.sort_values(by=["anio", "mes"]).copy()
-      # Renombramos el valor oficial a la métrica que espera el dashboard
       df_indec["Inflacion_Mensual"] = df_indec["valor"]
     else:
       df_indec = df_proc.copy()
