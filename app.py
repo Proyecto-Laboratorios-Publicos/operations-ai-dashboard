@@ -17,10 +17,10 @@ Explora la evolución macroeconómica completa, comparativas sectoriales y métr
 df_indec = obtener_datos_inflacion()
 
 st.sidebar.header("Panel de Control & Filtros")
-if not df_indec.empty:
+if not df_indec.empty and "Inflacion_Mensual" in df_indec.columns:
     st.sidebar.success("Estado: Conectado a la API oficial en vivo.")
 else:
-    st.sidebar.error("Estado: Sin datos disponibles desde la API.")
+    st.sidebar.error("Estado: Sin datos o columnas clave no encontradas.")
 
 opcion_historica = st.sidebar.selectbox(
     "Rango temporal de análisis:",
@@ -40,13 +40,17 @@ if not df_indec.empty and "Mes" in df_indec.columns and "Inflacion_Mensual" in d
         df_filtrado = df_indec
 
     if len(df_indec) >= 2:
-        ultimo_mes = df_indec.iloc[-1]["Mes"]
-        ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
-        inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
+        ultimo_mes = str(df_indec.iloc[-1]["Mes"])
+        ultima_inflacion = float(df_indec.iloc[-1]["Inflacion_Mensual"])
+        inflacion_anterior = float(df_indec.iloc[-2]["Inflacion_Mensual"])
         delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
+    elif len(df_indec) == 1:
+        ultimo_mes = str(df_indec.iloc[-1]["Mes"])
+        ultima_inflacion = float(df_indec.iloc[-1]["Inflacion_Mensual"])
+        delta_inflacion = 0.0
     else:
-        ultimo_mes = df_indec.iloc[-1]["Mes"]
-        ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
+        ultimo_mes = "Actual"
+        ultima_inflacion = 0.0
         delta_inflacion = 0.0
 
     st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
