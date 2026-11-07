@@ -3,10 +3,10 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
-    # Endpoint oficial exacto según la documentación del INDEC
+    # URL absoluta oficial correcta según la documentación de la API del INDEC
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
-    # Token JWT configurado por entorno con respaldo directo
+    # Token JWT oficial de tu cuenta
     token = os.getenv(
         "INDEC_API_TOKEN", 
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiJiNWU4ZTFhZC1kYzAzLTQ2MGEtYWI1Ni03MGM5YmJmNzRlNTUiLCJleHAiOjE4MDk2NDQxNTIsImlhdCI6MTc5NDA5MjE1Miwicm9sZSI6ImJhc2ljIn0.ijTrMytJVAndFhlUoCF7mJn0L7lQZcOK80saHbc9ovQ"
@@ -37,7 +37,7 @@ def obtener_datos_inflacion():
             
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
-            # La API de PostgREST del INDEC puede retornar 200 (OK) o 206 (Partial Content con count=exact)
+            # PostgREST del INDEC devuelve 200 (OK) o 206 (Partial Content con count=exact)
             if response.status_code in [200, 206]:
                 data = response.json()
                 if not data or not isinstance(data, list) or len(data) == 0:
@@ -58,7 +58,7 @@ def obtener_datos_inflacion():
             
         df = pd.DataFrame(all_data)
         
-        # Tipado numérico estricto según especificación de columnas decimales del INDEC
+        # Tipado numérico estricto
         for col in ["anio", "mes", "valor", "nivel"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
