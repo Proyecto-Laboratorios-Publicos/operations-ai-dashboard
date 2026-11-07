@@ -3,9 +3,6 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
-    # URL absoluta oficial correcta según la documentación de la API del INDEC
-    url = "https://api.indec.gob.ar/v1/ipc_nacional"
-    
     # Token JWT oficial de tu cuenta
     token = os.getenv(
         "INDEC_API_TOKEN", 
@@ -21,23 +18,17 @@ def obtener_datos_inflacion():
     offset = 0
     limit = 1000
     
-    # Clave primaria completa obligatoria exigida por el INDEC para orden estable en paginación
-    order_params = (
-        "clasificador,nivel,codigo,descripcion,periodo,anio,mes,"
-        "indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
-    )
+    # Clave primaria completa exigida obligatoriamente por el INDEC para orden estable
+    order_str = "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
     
     try:
         while True:
-            params = {
-                "order": order_params,
-                "limit": limit,
-                "offset": offset
-            }
+            # Construcción directa de la URL con los query parameters limpios
+            url = f"https://api.indec.gob.ar/v1/ipc_nacional?order={order_str}&limit={limit}&offset={offset}"
             
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
             
-            # PostgREST del INDEC devuelve 200 (OK) o 206 (Partial Content con count=exact)
+            # La API de PostgREST del INDEC devuelve 200 (OK) o 206 (Partial Content con count=exact)
             if response.status_code in [200, 206]:
                 data = response.json()
                 if not data or not isinstance(data, list) or len(data) == 0:
@@ -54,6 +45,7 @@ def obtener_datos_inflacion():
                 break
                 
         if not all_data:
+            print("[ADVERTENCIA]: La API no devolvió registros.")
             return pd.DataFrame()
             
         df = pd.DataFrame(all_data)
