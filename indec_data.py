@@ -10,7 +10,6 @@ def obtener_datos_inflacion():
     }
     
     try:
-        # Petición paginada con orden estable exigido por la documentación técnica
         params = {
             "order": "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
             "limit": 1000
@@ -22,9 +21,7 @@ def obtener_datos_inflacion():
         if response.status_code == 200:
             data = response.json()
             if data:
-                df = pd.DataFrame(data)
-                print(f"DEBUG INDEC API - Total registros crudos obtenidos: {len(df)}")
-                return df
+                return pd.DataFrame(data)
 
     except Exception as e:
         print(f"Error conectando con la API del INDEC: {e}")
