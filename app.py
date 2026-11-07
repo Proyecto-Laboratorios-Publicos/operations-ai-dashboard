@@ -35,10 +35,15 @@ elif "24 meses" in opcion_historica:
 else:
     df_filtrado = df_indec
 
-ultimo_mes = df_indec.iloc[-1]["Mes"]
-ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
-inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
-delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
+if len(df_indec) >= 2:
+        ultimo_mes = df_indec.iloc[-1]["Mes"]
+        ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
+        inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
+        delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
+    else:
+        ultimo_mes = "Actual"
+        ultima_inflacion = 0.0
+        delta_inflacion = 0.0
 
 st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
 st.sidebar.markdown(f"**Total registros en sistema:** {len(df_indec)} meses")
