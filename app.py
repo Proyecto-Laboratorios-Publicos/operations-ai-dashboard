@@ -15,19 +15,100 @@ Plataforma inteligente de analítica impulsada por series temporales históricas
 Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
 """)
 
-# Cargar base de datos histórica completa desde la API oficial
-df_indec = obtener_datos_inflacion()
+# Cargar base de datos cruda desde el módulo extractor
+df_raw = obtener_datos_inflacion()
+
+# Procesamiento y pivoteo de los datos en app.py
+df_indec = pd.DataFrame()
+
+if not df_raw.empty:
+  # Filtramos el total del país si existe la columna region
+  df_proc = df_raw.copy()
+  if "region" in df_proc.columns:
+    mask = df_proc["region"].str.contains(
+        "Total del país|Total Nacional", case=False, na=False
+    )
+    if mask.any():
+      df_proc = df_proc[mask]
+
+  # Mapeo de meses numéricos a texto amigable
+  meses_dict = {
+      1: "Ene",
+      2: "Feb",
+      3: "Mar",
+      4: "Abr",
+      5: "May",
+      6: "Jun",
+      7: "Jul",
+      8: "Ago",
+      9: "Sep",
+      10: "Oct",
+      11: "Nov",
+      12: "Dic",
+  }
+  if "mes" in df_proc.columns and "anio" in df_proc.columns:
+    df_proc["Mes_Texto"] = (
+        df_proc["mes"].map(meses_dict)
+        + " "
+        + df_proc["anio"].astype(int).astype(str)
+    )
+
+  if "descripcion" in df_proc.columns:
+    df_proc["descripcion"] = df_proc["descripcion"].astype(str).str.strip()
+
+  # Construimos la matriz dinámica (pivot table)
+  if {"Mes_Texto", "descripcion", "valor"}.issubset(df_proc.columns):
+    pivot = df_proc.pivot_table(
+        index=["Mes_Texto", "anio", "mes"],
+        columns="descripcion",
+        values="valor",
+        aggfunc="mean",
+    ).reset_index()
+
+    pivot.columns.name = None
+
+    # Normalizamos nombres de columnas clave para el dashboard
+    rename_dict = {"Mes_Texto": "Mes"}
+    for col in pivot.columns:
+      col_l = str(col).lower()
+      if "nivel general" in col_l:
+        rename_dict[col] = "Inflacion_Mensual"
+      elif "alimentos" in col_l:
+        rename_dict[col] = "Alimentos_Bebidas"
+      elif "vivienda" in col_l or "agua" in col_l:
+        rename_dict[col] = "Vivienda_Servicios"
+      elif "transporte" in col_l:
+        rename_dict[col] = "Transporte"
+      elif "salud" in col_l:
+        rename_dict[col] = "Salud"
+
+    pivot = pivot.rename(columns=rename_dict)
+    pivot = pivot.loc[:, ~pivot.columns.duplicated()]
+
+    # Columnas de respaldo por si alguna división no viene en el lote
+    for req in [
+        "Mes",
+        "Inflacion_Mensual",
+        "Alimentos_Bebidas",
+        "Vivienda_Servicios",
+        "Transporte",
+        "Salud",
+    ]:
+      if req not in pivot.columns and req != "Mes":
+        pivot[req] = 0.0
+
+    if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
+      df_indec = pivot.sort_values(by=["anio", "mes"]).dropna(
+          subset=["Inflacion_Mensual"]
+      )
 
 # Barra lateral con controles y filtros
 st.sidebar.header("Panel de Control & Filtros")
 if not df_indec.empty:
   st.sidebar.success("Estado: Conectado a la API oficial en vivo.")
 else:
-  st.sidebar.error(
-      "Estado: Sin datos disponibles desde la API. Verifique conexión."
-  )
+  st.sidebar.error("Estado: Procesando o sin datos disponibles.")
 
-# Selector de rango temporal de análisis
 opcion_historica = st.sidebar.selectbox(
     "Rango temporal de análisis:",
     [
@@ -45,7 +126,6 @@ if not df_indec.empty:
   else:
     df_filtrado = df_indec
 
-  # Validación de índices segura
   if len(df_indec) >= 2:
     ultimo_mes = df_indec.iloc[-1]["Mes"]
     ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
@@ -137,7 +217,7 @@ with tab2:
         ultimo_registro.columns = ["Division", "Porcentaje"]
         st.bar_chart(ultimo_registro.set_index("Division"), width="stretch")
       else:
-        st.info("No hay columnas sectoriales disponibles en el último registro.")
+        st.info("No hay columnas sectoriales disponibles.")
     else:
       st.warning("Sin datos para mostrar.")
   with col_b:
@@ -155,8 +235,6 @@ with tab3:
   )
   if not df_indec.empty:
     st.dataframe(df_indec, width="stretch")
-
-    # Botón de descarga CSV con todo el histórico
     csv = df_indec.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Descargar Histórico Completo en CSV",
