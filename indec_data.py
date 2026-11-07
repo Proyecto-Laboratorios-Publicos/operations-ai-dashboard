@@ -3,10 +3,8 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
-    # URL oficial absoluta corregida
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
-    # Token oficial de tu cuenta
     token = os.getenv(
         "INDEC_API_TOKEN", 
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiJiNWU4ZTFhZC1kYzAzLTQ2MGEtYWI1Ni03MGM5YmJmNzRlNTUiLCJleHAiOjE4MDk2NDQxNTIsImlhdCI6MTc5NDA5MjE1Miwicm9sZSI6ImJhc2ljIn0.ijTrMytJVAndFhlUoCF7mJn0L7lQZcOK80saHbc9ovQ"
@@ -14,18 +12,20 @@ def obtener_datos_inflacion():
     
     headers = {
         "Authorization": f"Bearer {token}",
-        "Prefer": "count=exact"
+        "Prefer": "count=exact",
+        "Accept": "application/json"
     }
     
     all_data = []
     offset = 0
     limit = 1000
     
-    # Clave primaria completa exigida obligatoriamente por el INDEC para orden estable
+    # Clave primaria completa exigida obligatoriamente por el INDEC
     order_str = "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
     
     try:
         while True:
+            # Petición construida de forma limpia asegurando los parámetros requeridos
             params = {
                 "order": order_str,
                 "limit": limit,
@@ -34,15 +34,12 @@ def obtener_datos_inflacion():
             
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
-            print(f"DEBUG INDEC API - Status Code: {response.status_code}")
-            
             if response.status_code in [200, 206]:
                 data = response.json()
                 if not data or not isinstance(data, list) or len(data) == 0:
                     break
                 
                 all_data.extend(data)
-                print(f"DEBUG INDEC API - Total registros acumulados: {len(all_data)}")
                 
                 if len(data) < limit:
                     break
@@ -86,7 +83,7 @@ def obtener_datos_inflacion():
         else:
             df["Periodo_Texto"] = df.get("periodo", "")
             
-        # Blindaje absoluto contra duplicados de columnas para evitar excepciones en PyArrow
+        # Blindaje absoluto contra duplicados de columnas
         df = df.loc[:, ~df.columns.duplicated()].copy()
             
         return df
