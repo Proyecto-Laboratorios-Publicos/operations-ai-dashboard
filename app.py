@@ -11,26 +11,39 @@ st.set_page_config(
 
 st.title("📊 Panel de Análisis Económico y Operativo")
 st.markdown("""
-Plataforma inteligente de analítica impulsada por series temporales oficiales del **INDEC**. 
-Explora la evolución de precios, indicadores sectoriales y tendencias macroeconómicas en tiempo real.
+Plataforma inteligente de analítica impulsada por series temporales históricas oficiales del **INDEC**. 
+Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
 """)
 
-# Cargar datos ampliados del INDEC
+# Cargar base de datos histórica completa
 df_indec = obtener_datos_inflacion()
 
-# Métricas clave del último período
+# Barra lateral con filtros avanzados de histórico
+st.sidebar.header("Panel de Control & Filtros")
+st.sidebar.success("Estado: Conectado al histórico oficial.")
+
+# Selector de rango de registros a visualizar en los gráficos
+opcion_historica = st.sidebar.selectbox(
+    "Rango temporal de análisis:",
+    ["Último año (12 meses)", "Últimos 2 años (24 meses)", "Histórico Completo (Desde 2024)"]
+)
+
+if "12 meses" in opcion_historica:
+    df_filtrado = df_indec.tail(12)
+elif "24 meses" in opcion_historica:
+    df_filtrado = df_indec.tail(24)
+else:
+    df_filtrado = df_indec
+
 ultimo_mes = df_indec.iloc[-1]["Mes"]
 ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
 inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
 delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
 
-# Barra lateral informativa
-st.sidebar.header("Panel de Control")
-st.sidebar.success("Estado: Conectado a la base analítica oficial.")
 st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
-st.sidebar.markdown(f"**Registros históricos:** {len(df_indec)} meses")
+st.sidebar.markdown(f"**Total registros en sistema:** {len(df_indec)} meses")
 
-# Creación de Pestañas (Tabs) para una navegación 100% intuitiva
+# Pestañas de navegación
 tab1, tab2, tab3 = st.tabs(["📈 Resumen General y Métricas", "📊 Análisis Sectorial por Divisiones", "📋 Explorador de Datos Completos"])
 
 with tab1:
@@ -45,19 +58,19 @@ with tab1:
         )
     with col2:
         st.metric(
-            label="Promedio Móvil (Últimos 3 meses)", 
-            value=f"{round(df_indec['Inflacion_Mensual'].tail(3).mean(), 2)}%"
+            label="Promedio Móvil (Período Seleccionado)", 
+            value=f"{round(df_filtrado['Inflacion_Mensual'].mean(), 2)}%"
         )
     with col3:
         st.metric(
-            label="Acumulado Anual Reciente", 
-            value=f"{round(df_indec['Inflacion_Mensual'].tail(12).sum(), 2)}%"
+            label="Máximo Mensual del Período", 
+            value=f"{df_filtrado['Inflacion_Mensual'].max()}%"
         )
 
     st.divider()
     
-    st.subheader("📈 Evolución Histórica Completa (IPC y Divisiones)")
-    st.line_chart(df_indec.set_index("Mes")[["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]])
+    st.subheader(f"📈 Evolución Histórica ({opcion_historica})")
+    st.line_chart(df_filtrado.set_index("Mes")[["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]])
 
 with tab2:
     st.subheader("Comparativa y Tendencia por División")
@@ -71,23 +84,20 @@ with tab2:
         st.bar_chart(ultimo_registro.set_index("Division"))
 
     with col_b:
-        st.markdown("### Tendencia Acumulada por Área")
-        st.area_chart(df_indec.set_index("Mes")[["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]])
+        st.markdown(f"### Tendencia Acumulada ({opcion_historica})")
+        st.area_chart(df_filtrado.set_index("Mes")[["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]])
 
 with tab3:
-    st.subheader("Base de Datos Oficial Normalizada")
-    st.markdown("A continuación puedes visualizar, filtrar y exportar la totalidad de las series temporales cargadas en el sistema:")
+    st.subheader("Base de Datos Histórica Oficial Normalizada")
+    st.markdown("Visualiza y exporta la totalidad del repositorio de series temporales del INDEC:")
     
-    # Filtro interactivo opcional por cantidad de meses
-    num_meses = st.slider("Seleccionar cantidad de meses a mostrar:", min_select := 3, max_value=len(df_indec), value=12)
+    st.dataframe(df_indec, use_container_width=True)
     
-    st.dataframe(df_indec.tail(num_meses), use_container_width=True)
-    
-    # Botón de descarga CSV para máxima utilidad profesional
+    # Botón de descarga CSV con todo el histórico
     csv = df_indec.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Descargar datos en formato CSV",
+        label="📥 Descargar Histórico Completo en CSV",
         data=csv,
-        file_name='indec_serie_inflacion.csv',
+        file_name='indec_historico_completo.csv',
         mime='text/csv',
     )
