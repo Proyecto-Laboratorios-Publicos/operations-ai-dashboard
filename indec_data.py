@@ -11,9 +11,8 @@ def obtener_datos_inflacion():
     
     try:
         params = {
-            "region": "eq.Total del país",
-            "limit": 10000,
-            "order": "periodo.asc"
+            "order": "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+            "limit": 1000
         }
         
         response = requests.get(url, headers=headers, params=params)
@@ -27,24 +26,27 @@ def obtener_datos_inflacion():
                     df["anio"] = pd.to_numeric(df["anio"], errors="coerce")
                     df["mes"] = pd.to_numeric(df["mes"], errors="coerce")
                     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
-                    df["descripcion"] = df["descripcion"].astype(str).str.strip()
                     
+                    if "region" in df.columns:
+                        df = df[df["region"].str.contains("Total del país|Total Nacional", case=False, na=False)]
+                        
                     if "tipo_de_indicador" in df.columns:
                         df = df[df["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)]
-                    
+                        
                     meses_dict = {
                         1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
                         7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
                     }
                     df["Mes"] = df["mes"].map(meses_dict) + " " + df["anio"].astype(int).astype(str)
                     
-                    df = df.drop_duplicates(subset=["periodo", "descripcion"])
-                    
+                    if "descripcion" in df.columns:
+                        df["descripcion"] = df["descripcion"].astype(str).str.strip()
+                        
                     pivot = df.pivot_table(
                         index=["Mes", "anio", "mes"],
                         columns="descripcion",
                         values="valor",
-                        aggfunc="mean"
+                        aggfunc="first"
                     ).reset_index()
                     
                     pivot.columns.name = None
