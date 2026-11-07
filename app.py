@@ -2,124 +2,195 @@ import pandas as pd
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 
+# Configuración inicial de la página
 st.set_page_config(
-    page_title="Dashboard de Inflación y Analítica - INDEC",
+    page_title="Dashboard Oficial IPC - INDEC",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("📊 Panel de Análisis Económico y Operativo")
+st.title("📊 Panel Integral de Analítica - Índice de Precios al Consumidor (INDEC)")
 st.markdown("""
-Plataforma inteligente de analítica impulsada por series temporales históricas oficiales del **INDEC**. 
-Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
+Plataforma analítica avanzada conectada en tiempo real al **[Catálogo API-INDEC](https://api.indec.gob.ar/docs#tag/direcci%C3%B3n-de-%C3%ADndices-de-precios-de-consumo)**. 
+Explora y explota la totalidad de los campos oficiales disponibles (clasificadores, regiones, niveles, tipos de indicadores y series temporales).
 """)
 
-df_indec = obtener_datos_inflacion()
+# Carga de datos crudos desde el módulo robusto
+df_raw = obtener_datos_inflacion()
 
-st.sidebar.header("Panel de Control & Filtros")
-if not df_indec.empty and "Inflacion_Mensual" in df_indec.columns:
-    st.sidebar.success("Estado: Conectado a la API oficial en vivo.")
-else:
-    st.sidebar.error("Estado: Sin datos o columnas clave no encontradas.")
+if df_raw.empty:
+    st.error("No se pudieron recuperar datos desde la API del INDEC. Verifique la conexión o el token de acceso.")
+    st.stop()
 
-opcion_historica = st.sidebar.selectbox(
-    "Rango temporal de análisis:",
-    [
-        "Último año (12 meses)",
-        "Últimos 2 años (24 meses)",
-        "Histórico Completo",
-    ],
+# Barra lateral de filtros y control global
+st.sidebar.header("🎛️ Filtros y Segmentación")
+
+# 1. Filtro por Región
+regiones_disponibles = sorted(df_raw["region"].dropna().unique().tolist())
+region_seleccionada = st.sidebar.selectbox(
+    "Región Estadística:",
+    ["Todas"] + regiones_disponibles
 )
 
-if not df_indec.empty and "Mes" in df_indec.columns and "Inflacion_Mensual" in df_indec.columns:
-    if "12 meses" in opcion_historica:
-        df_filtrado = df_indec.tail(12)
-    elif "24 meses" in opcion_historica:
-        df_filtrado = df_indec.tail(24)
-    else:
-        df_filtrado = df_indec
+# 2. Filtro por Tipo de Indicador
+tipos_indicador = sorted(df_raw["tipo_de_indicador_descripcion"].dropna().unique().tolist())
+tipo_ind_seleccionado = st.sidebar.multiselect(
+    "Tipo de Indicador:",
+    options=tipos_indicador,
+    default=tipos_indicador[:1] if tipos_indicador else []
+)
 
-    if len(df_indec) >= 2:
-        ultimo_mes = str(df_indec.iloc[-1]["Mes"])
-        ultima_inflacion = float(df_indec.iloc[-1]["Inflacion_Mensual"])
-        inflacion_anterior = float(df_indec.iloc[-2]["Inflacion_Mensual"])
-        delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
-    elif len(df_indec) == 1:
-        ultimo_mes = str(df_indec.iloc[-1]["Mes"])
-        ultima_inflacion = float(df_indec.iloc[-1]["Inflacion_Mensual"])
-        delta_inflacion = 0.0
-    else:
-        ultimo_mes = "Actual"
-        ultima_inflacion = 0.0
-        delta_inflacion = 0.0
+# 3. Filtro por Clasificador
+clasificadores = sorted(df_raw["clasificador"].dropna().unique().tolist())
+clasificador_seleccionado = st.sidebar.multiselect(
+    "Clasificador:",
+    options=clasificadores,
+    default=clasificadores
+)
 
-    st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
-    st.sidebar.markdown(f"**Total períodos en sistema:** {len(df_indec)}")
-else:
-    df_filtrado = pd.DataFrame()
-    ultimo_mes = "N/A"
-    ultima_inflacion = 0.0
-    delta_inflacion = 0.0
+# Aplicar filtros al DataFrame crudo
+df_filtrado = df_raw.copy()
 
-tab1, tab2, tab3 = st.tabs([
-    "📈 Resumen General y Métricas",
-    "📊 Análisis Sectorial",
-    "📋 Explorador de Datos Completos",
+if region_seleccionada != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["region"] == region_seleccionada]
+
+if tipo_ind_seleccionado:
+    df_filtrado = df_filtrado[df_filtrado["tipo_de_indicador_descripcion"].isin(tipo_ind_seleccionado)]
+
+if clasificador_seleccionado:
+    df_filtrado = df_filtrado[df_filtrado["clasificador"].isin(clasificador_seleccionado)]
+
+# Sidebar métricas de control
+st.sidebar.divider()
+st.sidebar.markdown(f"**Registros crudos totales:** {len(df_raw):,}")
+st.sidebar.markdown(f"**Registros filtrados:** {len(df_filtrado):,}")
+
+# Pestañas principales para explotar cada campo y dimensión de la API
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📈 Evolución Temporal y Series",
+    "🗺️ Análisis Regional y Geográfico",
+    "📂 Desglose por Clasificadores y Niveles",
+    "🔍 Explorador Multidimensional (Tabla Completa)",
+    "ℹ️ Diccionario de Campos de la API"
 ])
 
 with tab1:
-    st.subheader("Indicadores Principales (IPC General)")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(
-            label=f"Inflación Mensual ({ultimo_mes})",
-            value=f"{ultima_inflacion}%",
-            delta=f"{delta_inflacion}%",
-        )
-    with col2:
-        promedio_movil = round(df_filtrado["Inflacion_Mensual"].mean(), 2) if not df_filtrado.empty and "Inflacion_Mensual" in df_filtrado.columns else 0.0
-        st.metric(
-            label="Promedio Móvil (Período Seleccionado)",
-            value=f"{promedio_movil}%",
-        )
-    with col3:
-        max_mensual = df_filtrado["Inflacion_Mensual"].max() if not df_filtrado.empty and "Inflacion_Mensual" in df_filtrado.columns else 0.0
-        st.metric(
-            label="Máximo Mensual del Período",
-            value=f"{max_mensual}%"
-        )
-
-    st.divider()
-    st.subheader(f"📈 Evolución Histórica ({opcion_historica})")
-    if not df_filtrado.empty and "Mes" in df_filtrado.columns and "Inflacion_Mensual" in df_filtrado.columns:
-        st.line_chart(df_filtrado.set_index("Mes")[["Inflacion_Mensual"]], width="stretch")
+    st.subheader("Evolución de Indicadores a lo Largo del Tiempo")
+    st.markdown("Visualiza el comportamiento de los valores a través del campo **periodo**, **anio** y **mes**.")
+    
+    if not df_filtrado.empty and "valor" in df_filtrado.columns:
+        # Gráfico temporal agrupado por descripción e indicador
+        df_chart = df_filtrado.dropna(subset=["valor", "Periodo_Texto", "descripcion"])
+        
+        if not df_chart.empty:
+            # Selector de descripciones clave para graficar
+            descripciones_disponibles = sorted(df_chart["descripcion"].unique().tolist())
+            desc_elegidas = st.multiselect(
+                "Seleccione descripciones/categorías para comparar en el gráfico:",
+                options=descripciones_disponibles,
+                default=descripciones_disponibles[:3] if len(descripciones_disponibles) >= 3 else descripciones_disponibles
+            )
+            
+            if desc_elegidas:
+                df_subset = df_chart[df_chart["descripcion"].isin(desc_elegidas)]
+                # Pivotear para crear un gráfico de líneas limpio por categoría
+                pivot_chart = df_subset.pivot_table(
+                    index=["periodo", "Periodo_Texto"],
+                    columns="descripcion",
+                    values="valor",
+                    aggfunc="mean"
+                ).reset_index()
+                
+                pivot_chart = pivot_chart.sort_values("periodo")
+                pivot_chart.set_index("Periodo_Texto", inplace=True)
+                
+                st.line_chart(pivot_chart.drop(columns=["periodo"], errors="ignore"), width="stretch")
+            else:
+                st.info("Seleccione al menos una categoría para visualizar la tendencia temporal.")
+        else:
+            st.warning("No hay suficientes datos numéricos con los filtros actuales.")
     else:
-        st.warning("No hay datos históricos para mostrar en el gráfico.")
+        st.warning("Sin datos disponibles para el análisis temporal.")
 
 with tab2:
-    st.subheader("Comparativa y Tendencia Sectorial")
-    st.markdown(f"### Desglose del Último Período ({ultimo_mes})")
-    if not df_indec.empty:
-        cols_sector = [c for c in ["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if c in df_indec.columns]
-        if cols_sector and len(df_indec) > 0:
-            ultimo_reg = df_indec.iloc[-1][cols_sector].reset_index()
-            ultimo_reg.columns = ["División", "Variación (%)"]
-            st.bar_chart(ultimo_reg.set_index("División"), width="stretch")
-        st.dataframe(df_indec, width="stretch")
+    st.subheader("Comparativa por Regiones Estadísticas")
+    st.markdown("Explota las diferencias en los valores del indicador agrupados por el campo **region**.")
+    
+    if not df_filtrado.empty and "region" in df_filtrado.columns:
+        col_reg1, col_reg2 = st.columns(2)
+        
+        with col_reg1:
+            st.markdown("#### Promedio de Valores por Región")
+            df_reg_mean = df_filtrado.groupby("region")["valor"].mean().reset_index()
+            st.bar_chart(df_reg_mean.set_index("region"), width="stretch")
+            
+        with col_reg2:
+            st.markdown("#### Resumen Estadístico Regional")
+            st.dataframe(df_filtrado.groupby("region")["valor"].agg(["count", "mean", "min", "max"]).reset_index(), width="stretch")
     else:
-        st.warning("Sin datos sectoriales para mostrar.")
+        st.warning("No hay datos regionales disponibles.")
 
 with tab3:
-    st.subheader("Base de Datos Histórica Oficial Normalizada")
-    st.markdown("Visualiza la totalidad de los datos estructurados provenientes del endpoint oficial del INDEC:")
-    if not df_indec.empty:
-        st.dataframe(df_indec, width="stretch")
-        csv = df_indec.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 Descargar Histórico Completo en CSV",
-            data=csv,
-            file_name="indec_historico_completo.csv",
-            mime="text/csv",
+    st.subheader("Estructura por Clasificadores, Niveles y Códigos")
+    st.markdown("Aprovecha la jerarquía oficial del INDEC utilizando **clasificador**, **nivel**, **codigo** y **unidad_de_medida**.")
+    
+    if not df_filtrado.empty:
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            clasif_sel = st.selectbox("Filtrar por Clasificador Específico:", options=["Todos"] + clasificadores)
+        with col_c2:
+            niveles_disp = sorted(df_filtrado["nivel"].dropna().unique().tolist())
+            nivel_sel = st.selectbox("Filtrar por Nivel de Desagregación:", options=["Todos"] + niveles_disp)
+            
+        df_jerarquia = df_filtrado.copy()
+        if clasif_sel != "Todos":
+            df_jerarquia = df_jerarquia[df_jerarquia["clasificador"] == clasif_sel]
+        if nivel_sel != "Todos":
+            df_jerarquia = df_jerarquia[df_jerarquia["nivel"] == nivel_sel]
+            
+        st.dataframe(
+            df_jerarquia[["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"]].drop_duplicates(),
+            width="stretch"
         )
     else:
-        st.warning("La base de datos se encuentra vacía.")
+        st.warning("No hay datos para la jerarquía seleccionada.")
+
+with tab4:
+    st.subheader("Explorador Multidimensional Completo (Todos los Campos Crudos)")
+    st.markdown("Tabla interactiva que contiene absolutamente todas las columnas y registros devueltos por la API.")
+    
+    if not df_filtrado.empty:
+        st.dataframe(df_filtrado, width="stretch")
+        
+        csv_data = df_filtrado.to_csv(index=False).encode("utf-8")
+        st.download_button(
+        label="📥 Descargar Datos Filtrados en CSV",
+        data=csv_data,
+        file_name="indec_datos_completos_filtrados.csv",
+        mime="text/csv",
+    )
+    else:
+        st.warning("No hay registros para mostrar.")
+
+with tab5:
+    st.subheader("Diccionario de Campos Oficiales de la API del INDEC")
+    st.markdown("Detalle técnico de cada columna consumida desde el [Catálogo API-INDEC](https://api.indec.gob.ar/datasets/ipc_nacional):")
+    
+    diccionario_campos = [
+        {"Columna": "clasificador", "Tipo": "Texto", "Descripción": "Clasificador utilizado para organizar y codificar las categorías del dato."},
+        {"Columna": "nivel", "Tipo": "Texto", "Descripción": "Nivel de desagregación de la categoría dentro de la estructura del clasificador."},
+        {"Columna": "codigo", "Tipo": "Texto", "Descripción": "Código asignado a la categoría de acuerdo con el clasificador utilizado."},
+        {"Columna": "descripcion", "Tipo": "Texto", "Descripción": "Denominación de la categoría correspondiente al código informado."},
+        {"Columna": "periodo", "Tipo": "Texto", "Descripción": "Período de referencia del dato, expresado en formato AAAAMM (meses)."},
+        {"Columna": "anio", "Tipo": "Decimal", "Descripción": "Año correspondiente al período de referencia del dato."},
+        {"Columna": "mes", "Tipo": "Decimal", "Descripción": "Número del mes correspondiente al período de referencia (1 a 12)."},
+        {"Columna": "indicador", "Tipo": "Texto", "Descripción": "Nombre del indicador estadístico."},
+        {"Columna": "tipo_de_indicador", "Tipo": "Texto", "Descripción": "Tipo de cálculo o presentación del indicador (ej: índice, variación, etc.)."},
+        {"Columna": "tipo_de_indicador_descripcion", "Tipo": "Texto", "Descripción": "Descripción detallada del tipo de indicador."},
+        {"Columna": "region", "Tipo": "Texto", "Descripción": "Región estadística a la que corresponde el dato."},
+        {"Columna": "unidad_de_medida", "Tipo": "Texto", "Descripción": "Unidad en la que se expresa el valor del indicador."},
+        {"Columna": "valor", "Tipo": "Decimal", "Descripción": "Valor del indicador para el período y las categorías informadas."},
+        {"Columna": "observaciones", "Tipo": "Texto", "Descripción": "Notas necesarias o signos convencionales para el valor informado."}
+    ]
+    
+    st.dataframe(pd.DataFrame(diccionario_campos), width="stretch")
