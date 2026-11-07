@@ -12,11 +12,12 @@ def obtener_datos_inflacion():
     all_data = []
     offset = 0
     limit = 1000
+    order_params = "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
     
     try:
         while True:
             params = {
-                "order": "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+                "order": order_params,
                 "limit": limit,
                 "offset": offset
             }
