@@ -10,7 +10,6 @@ def obtener_datos_inflacion():
     }
     
     try:
-        # Solicitamos los datos ordenados por período según clave primaria
         params = {
             "limit": 1000,
             "order": "periodo.asc"
@@ -22,46 +21,42 @@ def obtener_datos_inflacion():
             if data:
                 df = pd.DataFrame(data)
                 
-                if {"periodo", "descripcion", "valor", "anio", "mes", "region", "nivel"}.issubset(df.columns):
-                    # 1. Filtramos estrictamente la región nacional
+                if {"periodo", "descripcion", "valor", "anio", "mes", "region"}.issubset(df.columns):
+                    # 1. Filtramos la región nacional
                     df_nacional = df[df["region"].str.contains("Total del país", case=False, na=False)].copy()
                     if df_nacional.empty:
                         df_nacional = df.copy()
                     
-                    # 2. Nos quedamos únicamente con el nivel macroeconómico principal (Divisiones / Nivel general)
-                    # Esto evita duplicados masivos de clases, grupos y subclases.
-                    df_nacional = df_nacional[df_nacional["nivel"].str.contains("División|Nivel general", case=False, na=False)].copy()
-                    
-                    # 3. Formateamos el mes a texto (ej: "Ene 2024")
+                    # 2. Formatear mes a texto
                     meses_dict = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
                                   7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
-                    
                     df_nacional["Mes_Texto"] = df_nacional["mes"].map(meses_dict) + " " + df_nacional["anio"].astype(int).astype(str)
                     
-                    # 4. Filtramos variaciones mensuales
+                    # 3. Filtrar variaciones mensuales o índices generales
                     df_filtrado = df_nacional[df_nacional["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)].copy()
                     
-                    # Eliminamos cualquier posible duplicado previo al pivot
-                    df_filtrado = df_filtrado.drop_duplicates(subset=["periodo", "descripcion"])
-                    
                     if not df_filtrado.empty:
+                        # Limpiamos y normalizamos la descripción para evitar duplicados por mayúsculas/espacios
+                        df_filtrado["descripcion"] = df_filtrado["descripcion"].astype(str).str.strip()
+                        
+                        # Creamos un pivote seguro agrupando por promedio si hay colisiones
                         pivot = df_filtrado.pivot_table(
                             index=["Mes_Texto", "anio", "mes"],
                             columns="descripcion",
                             values="valor",
-                            aggfunc="first"
+                            aggfunc="mean"
                         ).reset_index()
                         
-                        # Limpiamos nombres de columnas
-                        pivot.columns = [str(c).strip() for c in pivot.columns]
+                        # Aplanamos los nombres de columnas por seguridad
+                        pivot.columns.name = None
                         
-                        # Diccionario de remapeo seguro e inteligente
+                        # Buscamos dinámicamente las columnas clave basadas en coincidencias parciales
                         rename_dict = {"Mes_Texto": "Mes"}
                         for col in pivot.columns:
-                            col_l = col.lower()
+                            col_l = str(col).lower()
                             if "nivel general" in col_l:
                                 rename_dict[col] = "Inflacion_Mensual"
-                            elif "alimentos y bebidas" in col_l and "Alimentos" in col:
+                            elif "alimentos y bebidas" in col_l:
                                 rename_dict[col] = "Alimentos_Bebidas"
                             elif "vivienda" in col_l or "agua" in col_l:
                                 rename_dict[col] = "Vivienda_Servicios"
@@ -72,9 +67,10 @@ def obtener_datos_inflacion():
                                 
                         pivot = pivot.rename(columns=rename_dict)
                         
-                        # Garantizamos columnas únicas eliminando duplicados de nombres si ocurren
+                        # Eliminamos cualquier columna duplicada remanente en el eje de columnas
                         pivot = pivot.loc[:, ~pivot.columns.duplicated()]
                         
+                        # Seleccionamos estrictamente solo las columnas que existan
                         cols_deseadas = ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]
                         cols_presentes = [c for c in cols_deseadas if c in pivot.columns]
                         
@@ -85,6 +81,6 @@ def obtener_datos_inflacion():
                             return pivot
 
     except Exception as e:
-        print(f"Error en API INDEC: {e}")
+        print(f"Error procesando API INDEC: {e}")
 
     return pd.DataFrame()
