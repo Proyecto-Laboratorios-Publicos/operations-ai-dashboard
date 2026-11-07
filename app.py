@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("📊 Panel de Análisis Económico y Operativo")
 st.markdown("""
 Bienvenido a este dashboard inteligente impulsado por datos oficiales del **INDEC**. 
-Aquí podrás consultar métricas de inflación, evolución de precios por división y realizar análisis de datos en tiempo real.
+Aquí puedes consultar métricas de inflación, evolución de precios por división y realizar análisis de datos en tiempo real.
 """)
 
 # Cargar datos del INDEC
@@ -37,7 +37,7 @@ with col1:
     st.metric(
         label=f"Inflación Mensual ({ultimo_mes})", 
         value=f"{ultima_inflacion}%", 
-        delta=f"{delta_inflacion}%", 
+        delta=f"{delta_inflacion}%"
     )
 with col2:
     st.metric(
@@ -52,9 +52,25 @@ with col3:
 
 st.divider()
 
-# Gráfico interactivo y tabla
-st.subheader("📈 Evolución Histórica de la Inflación Mensual")
-st.line_chart(df_indec.set_index("Mes")[["Inflacion_Mensual", "Alimentos_Bebidas"]])
+# Gráfico 1: Evolución Histórica (Líneas)
+st.subheader("📈 1. Evolución Histórica de la Inflación Mensual")
+st.line_chart(df_indec.set_index("Mes")[["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte"]])
+
+# Dividir en dos columnas para los gráficos siguientes
+col_a, col_b = st.columns(2)
+
+with col_a:
+    st.subheader("📊 2. Comparativa por División (Último Mes)")
+    # Tomamos la última fila y preparamos los datos para barras
+    ultimo_registro = df_indec.iloc[-1][["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte"]].reset_index()
+    ultimo_registro.columns = ["Division", "Porcentaje"]
+    st.bar_chart(ultimo_registro.set_index("Division"))
+
+with col_b:
+    st.subheader("📉 3. Tendencia Acumulada por Área")
+    st.area_chart(df_indec.set_index("Mes")[["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte"]])
+
+st.divider()
 
 with st.expander("Ver tabla de datos detallados"):
     st.dataframe(df_indec, use_container_width=True)
