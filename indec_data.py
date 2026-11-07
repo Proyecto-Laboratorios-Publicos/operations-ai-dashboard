@@ -3,10 +3,10 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
-    # URL absoluta oficial según la documentación de la API del INDEC
+    # URL oficial absoluta corregida
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
-    # Token JWT oficial de tu cuenta
+    # Token oficial de tu cuenta
     token = os.getenv(
         "INDEC_API_TOKEN", 
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiJiNWU4ZTFhZC1kYzAzLTQ2MGEtYWI1Ni03MGM5YmJmNzRlNTUiLCJleHAiOjE4MDk2NDQxNTIsImlhdCI6MTc5NDA5MjE1Miwicm9sZSI6ImJhc2ljIn0.ijTrMytJVAndFhlUoCF7mJn0L7lQZcOK80saHbc9ovQ"
@@ -34,13 +34,15 @@ def obtener_datos_inflacion():
             
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
-            # La API de PostgREST del INDEC devuelve 200 (OK) o 206 (Partial Content con count=exact)
+            print(f"DEBUG INDEC API - Status Code: {response.status_code}")
+            
             if response.status_code in [200, 206]:
                 data = response.json()
                 if not data or not isinstance(data, list) or len(data) == 0:
                     break
                 
                 all_data.extend(data)
+                print(f"DEBUG INDEC API - Total registros acumulados: {len(all_data)}")
                 
                 if len(data) < limit:
                     break
@@ -84,7 +86,7 @@ def obtener_datos_inflacion():
         else:
             df["Periodo_Texto"] = df.get("periodo", "")
             
-        # Blindaje contra duplicados de columnas para evitar excepciones de PyArrow / Streamlit
+        # Blindaje absoluto contra duplicados de columnas para evitar excepciones en PyArrow
         df = df.loc[:, ~df.columns.duplicated()].copy()
             
         return df
