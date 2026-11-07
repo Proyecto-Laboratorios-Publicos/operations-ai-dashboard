@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 
-# Configuración inicial de la página
+# Configuración inicial de la página en modo ancho
 st.set_page_config(
     page_title="Dashboard Oficial IPC - INDEC",
     page_icon="📊",
@@ -21,8 +21,16 @@ def cargar_datos():
 
 df_raw = cargar_datos()
 
+# Diagnóstico visual amigable y detallado en caso de fallo de conexión o token
 if df_raw.empty:
-    st.error("No se pudieron recuperar datos desde la API del INDEC. Verifique el token de autenticación o la conexión.")
+    st.error("⚠️ **No se pudieron recuperar datos desde la API del INDEC.**")
+    with st.expander("🔍 Guía de resolución de problemas y posibles causas"):
+        st.markdown("""
+        Esto suele ocurrir por las siguientes razones:
+        1. **Token JWT Expirado o Inválido:** El token Bearer configurado en el entorno o en el código ha caducado. Debe generar uno nuevo desde su perfil en el [Catálogo API-INDEC](https://api.indec.gob.ar/docs).
+        2. **Límite de cuota o caídas temporales:** El servidor de la API del INDEC podría estar experimentando mantenimiento temporal.
+        3. **Configuración de Variables de Entorno:** Verifique que la variable `INDEC_API_TOKEN` esté configurada correctamente en los secretos o ajustes de su despliegue en Streamlit Cloud.
+        """)
     st.stop()
 
 # Barra lateral de filtros oficiales basados estrictamente en la documentación
