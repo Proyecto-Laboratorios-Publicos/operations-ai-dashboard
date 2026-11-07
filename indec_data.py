@@ -3,9 +3,10 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
+    # URL absoluta oficial según la documentación del INDEC
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
-    # Obtener token desde variable de entorno con respaldo por defecto
+    # Token actual verificado con respaldo por variable de entorno
     token = os.getenv("INDEC_API_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiJiNWU4ZTFhZC1kYzAzLTQ2MGEtYWI1Ni03MGM5YmJmNzRlNTUiLCJleHAiOjE4MDk2NDQxNTIsImlhdCI6MTc5NDA5MjE1Miwicm9sZSI6ImJhc2ljIn0.ijTrMytJVAndFhlUoCF7mJn0L7lQZcOK80saHbc9ovQ")
     
     headers = {
@@ -16,7 +17,7 @@ def obtener_datos_inflacion():
     offset = 0
     limit = 1000
     
-    # Orden estable obligatorio según la documentación oficial del Catálogo API-INDEC
+    # Orden estable obligatorio exigido por la documentación oficial para paginar
     order_params = "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
     
     try:
@@ -40,7 +41,6 @@ def obtener_datos_inflacion():
                     break
                 offset += limit
             else:
-                # Diagnóstico avanzado en consola para errores de autenticación o formato (401, 403, 400)
                 print(f"[ERROR API INDEC] Status Code: {response.status_code}")
                 print(f"[DETALLES RESPUESTA]: {response.text}")
                 break
