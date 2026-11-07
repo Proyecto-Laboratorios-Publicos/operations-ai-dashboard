@@ -15,59 +15,41 @@ Plataforma inteligente de analítica impulsada por series temporales históricas
 Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
 """)
 
-# Cargar base de datos cruda desde el módulo extractor
+# Cargar base de datos cruda
 df_raw = obtener_datos_inflacion()
 
-# Procesamiento y pivoteo de los datos en app.py
 df_indec = pd.DataFrame()
 
 if not df_raw.empty:
-  # Filtramos el total del país si existe la columna region
   df_proc = df_raw.copy()
+  
+  # Filtramos Total del País si existe la columna region
   if "region" in df_proc.columns:
-    mask = df_proc["region"].str.contains(
-        "Total del país|Total Nacional", case=False, na=False
-    )
+    mask = df_proc["region"].str.contains("Total del país|Total Nacional", case=False, na=False)
     if mask.any():
       df_proc = df_proc[mask]
 
   # Mapeo de meses numéricos a texto amigable
-  meses_dict = {
-      1: "Ene",
-      2: "Feb",
-      3: "Mar",
-      4: "Abr",
-      5: "May",
-      6: "Jun",
-      7: "Jul",
-      8: "Ago",
-      9: "Sep",
-      10: "Oct",
-      11: "Nov",
-      12: "Dic",
-  }
+  meses_dict = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
+                7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
+                
   if "mes" in df_proc.columns and "anio" in df_proc.columns:
-    df_proc["Mes_Texto"] = (
-        df_proc["mes"].map(meses_dict)
-        + " "
-        + df_proc["anio"].astype(int).astype(str)
-    )
+    df_proc["Mes_Texto"] = df_proc["mes"].map(meses_dict) + " " + df_proc["anio"].astype(int).astype(str)
 
   if "descripcion" in df_proc.columns:
     df_proc["descripcion"] = df_proc["descripcion"].astype(str).str.strip()
 
-  # Construimos la matriz dinámica (pivot table)
+  # Construcción del pivot table asegurando unicidad de columnas
   if {"Mes_Texto", "descripcion", "valor"}.issubset(df_proc.columns):
     pivot = df_proc.pivot_table(
         index=["Mes_Texto", "anio", "mes"],
         columns="descripcion",
         values="valor",
-        aggfunc="mean",
+        aggfunc="mean"
     ).reset_index()
-
+    
     pivot.columns.name = None
 
-    # Normalizamos nombres de columnas clave para el dashboard
     rename_dict = {"Mes_Texto": "Mes"}
     for col in pivot.columns:
       col_l = str(col).lower()
@@ -85,22 +67,12 @@ if not df_raw.empty:
     pivot = pivot.rename(columns=rename_dict)
     pivot = pivot.loc[:, ~pivot.columns.duplicated()]
 
-    # Columnas de respaldo por si alguna división no viene en el lote
-    for req in [
-        "Mes",
-        "Inflacion_Mensual",
-        "Alimentos_Bebidas",
-        "Vivienda_Servicios",
-        "Transporte",
-        "Salud",
-    ]:
+    for req in ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
       if req not in pivot.columns and req != "Mes":
         pivot[req] = 0.0
 
     if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
-      df_indec = pivot.sort_values(by=["anio", "mes"]).dropna(
-          subset=["Inflacion_Mensual"]
-      )
+      df_indec = pivot.sort_values(by=["anio", "mes"]).dropna(subset=["Inflacion_Mensual"])
 
 # Barra lateral con controles y filtros
 st.sidebar.header("Panel de Control & Filtros")
@@ -133,9 +105,7 @@ if not df_indec.empty:
     delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
   else:
     ultimo_mes = df_indec.iloc[-1]["Mes"] if len(df_indec) == 1 else "Actual"
-    ultima_inflacion = (
-        df_indec.iloc[-1]["Inflacion_Mensual"] if len(df_indec) == 1 else 0.0
-    )
+    ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"] if len(df_indec) == 1 else 0.0
     delta_inflacion = 0.0
 
   st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
@@ -163,35 +133,22 @@ with tab1:
         delta=f"{delta_inflacion}%",
     )
   with col2:
-    promedio_movil = (
-        round(df_filtrado["Inflacion_Mensual"].mean(), 2)
-        if not df_filtrado.empty
-        else 0.0
-    )
+    promedio_movil = round(df_filtrado["Inflacion_Mensual"].mean(), 2) if not df_filtrado.empty else 0.0
     st.metric(
         label="Promedio Móvil (Período Seleccionado)",
         value=f"{promedio_movil}%",
     )
   with col3:
-    max_mensual = (
-        df_filtrado["Inflacion_Mensual"].max() if not df_filtrado.empty else 0.0
+    max_mensual = df_filtrado["Inflacion_Mensual"].max() if not df_filtrado.empty else 0.0
+    st.metric(
+        label="Máximo Mensual del Período",
+        value=f"{max_mensual}%"
     )
-    st.metric(label="Máximo Mensual del Período", value=f"{max_mensual}%")
 
   st.divider()
   st.subheader(f"📈 Evolución Histórica ({opcion_historica})")
   if not df_filtrado.empty:
-    cols_grafico = [
-        c
-        for c in [
-            "Inflacion_Mensual",
-            "Alimentos_Bebidas",
-            "Vivienda_Servicios",
-            "Transporte",
-            "Salud",
-        ]
-        if c in df_filtrado.columns
-    ]
+    cols_grafico = [c for c in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if c in df_filtrado.columns]
     st.line_chart(df_filtrado.set_index("Mes")[cols_grafico], width="stretch")
   else:
     st.warning("No hay datos históricos para mostrar en el gráfico.")
@@ -202,16 +159,7 @@ with tab2:
   with col_a:
     st.markdown(f"### Desglose del Último Mes ({ultimo_mes})")
     if not df_indec.empty:
-      cols_desglose = [
-          c
-          for c in [
-              "Alimentos_Bebidas",
-              "Vivienda_Servicios",
-              "Transporte",
-              "Salud",
-          ]
-          if c in df_indec.columns
-      ]
+      cols_desglose = [c for c in ["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if c in df_indec.columns]
       if cols_desglose:
         ultimo_registro = df_indec.iloc[-1][cols_desglose].reset_index()
         ultimo_registro.columns = ["Division", "Porcentaje"]
@@ -229,10 +177,7 @@ with tab2:
 
 with tab3:
   st.subheader("Base de Datos Histórica Oficial Normalizada")
-  st.markdown(
-      "Visualiza la totalidad de los datos estructurados provenientes del"
-      " endpoint oficial del INDEC:"
-  )
+  st.markdown("Visualiza la totalidad de los datos estructurados provenientes del endpoint oficial del INDEC:")
   if not df_indec.empty:
     st.dataframe(df_indec, width="stretch")
     csv = df_indec.to_csv(index=False).encode("utf-8")
