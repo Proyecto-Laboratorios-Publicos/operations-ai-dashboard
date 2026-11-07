@@ -11,11 +11,11 @@ st.set_page_config(
 
 st.title("📊 Panel Integral de Analítica - Índice de Precios al Consumidor (INDEC)")
 st.markdown("""
-Plataforma analítica avanzada conectada en tiempo real al **[Catálogo API-INDEC](https://api.indec.gob.ar/docs#tag/direcci%C3%B3n-de-%C3%ADndices-de-precios-de-consumo)**. 
+Plataforma analítica avanzada conectada en tiempo real al **[Catálogo API-INDEC](https://api.indec.gob.ar/docs#tag/direcci%C3%B3n-de-%C3%ADndices-de-precios-de-consumo)**.
 Explora y explota la totalidad de los campos oficiales disponibles (clasificadores, regiones, niveles, tipos de indicadores y series temporales).
 """)
 
-# Carga de datos crudos desde el módulo robusto
+# Carga de datos crudos desde el módulo
 df_raw = obtener_datos_inflacion()
 
 if df_raw.empty:
@@ -23,7 +23,7 @@ if df_raw.empty:
     st.stop()
 
 # Barra lateral de filtros y control global
-st.sidebar.header("🎛️ Filtros y Segmentación")
+st.sidebar.header("🎛️ Filtros Oficiales API")
 
 # 1. Filtro por Región
 regiones_disponibles = sorted(df_raw["region"].dropna().unique().tolist())
@@ -66,24 +66,21 @@ st.sidebar.markdown(f"**Registros crudos totales:** {len(df_raw):,}")
 st.sidebar.markdown(f"**Registros filtrados:** {len(df_filtrado):,}")
 
 # Pestañas principales para explotar cada campo y dimensión de la API
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Evolución Temporal y Series",
-    "🗺️ Análisis Regional y Geográfico",
-    "📂 Desglose por Clasificadores y Niveles",
-    "🔍 Explorador Multidimensional (Tabla Completa)",
-    "ℹ️ Diccionario de Campos de la API"
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📈 Series Temporales",
+    "🗺️ Análisis Regional",
+    "📂 Jerarquía y Clasificadores",
+    "📋 Explorador de Datos Crudos"
 ])
 
 with tab1:
     st.subheader("Evolución de Indicadores a lo Largo del Tiempo")
-    st.markdown("Visualiza el comportamiento de los valores a través del campo **periodo**, **anio** y **mes**.")
+    st.markdown("Visualiza el comportamiento de los valores a través del campo **periodo** y **Periodo_Texto**.")
     
     if not df_filtrado.empty and "valor" in df_filtrado.columns:
-        # Gráfico temporal agrupado por descripción e indicador
         df_chart = df_filtrado.dropna(subset=["valor", "Periodo_Texto", "descripcion"])
         
         if not df_chart.empty:
-            # Selector de descripciones clave para graficar
             descripciones_disponibles = sorted(df_chart["descripcion"].unique().tolist())
             desc_elegidas = st.multiselect(
                 "Seleccione descripciones/categorías para comparar en el gráfico:",
@@ -93,7 +90,6 @@ with tab1:
             
             if desc_elegidas:
                 df_subset = df_chart[df_chart["descripcion"].isin(desc_elegidas)]
-                # Pivotear para crear un gráfico de líneas limpio por categoría
                 pivot_chart = df_subset.pivot_table(
                     index=["periodo", "Periodo_Texto"],
                     columns="descripcion",
@@ -132,31 +128,18 @@ with tab2:
 
 with tab3:
     st.subheader("Estructura por Clasificadores, Niveles y Códigos")
-    st.markdown("Aprovecha la jerarquía oficial del INDEC utilizando **clasificador**, **nivel**, **codigo** y **unidad_de_medida**.")
+    st.markdown("Aprovecha la jerarquía oficial utilizando **clasificador**, **nivel**, **codigo** y **unidad_de_medida**.")
     
     if not df_filtrado.empty:
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            clasif_sel = st.selectbox("Filtrar por Clasificador Específico:", options=["Todos"] + clasificadores)
-        with col_c2:
-            niveles_disp = sorted(df_filtrado["nivel"].dropna().unique().tolist())
-            nivel_sel = st.selectbox("Filtrar por Nivel de Desagregación:", options=["Todos"] + niveles_disp)
-            
-        df_jerarquia = df_filtrado.copy()
-        if clasif_sel != "Todos":
-            df_jerarquia = df_jerarquia[df_jerarquia["clasificador"] == clasif_sel]
-        if nivel_sel != "Todos":
-            df_jerarquia = df_jerarquia[df_jerarquia["nivel"] == nivel_sel]
-            
         st.dataframe(
-            df_jerarquia[["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"]].drop_duplicates(),
+            df_filtrado[["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"]].drop_duplicates(),
             width="stretch"
         )
     else:
         st.warning("No hay datos para la jerarquía seleccionada.")
 
 with tab4:
-    st.subheader("Explorador Multidimensional Completo (Todos los Campos Crudos)")
+    st.subheader("Explorador Multidimensional Completo")
     st.markdown("Tabla interactiva que contiene absolutamente todas las columnas y registros devueltos por la API.")
     
     if not df_filtrado.empty:
@@ -164,33 +147,10 @@ with tab4:
         
         csv_data = df_filtrado.to_csv(index=False).encode("utf-8")
         st.download_button(
-        label="📥 Descargar Datos Filtrados en CSV",
-        data=csv_data,
-        file_name="indec_datos_completos_filtrados.csv",
-        mime="text/csv",
-    )
+            label="📥 Descargar Datos Filtrados en CSV",
+            data=csv_data,
+            file_name="indec_datos_completos_filtrados.csv",
+            mime="text/csv",
+        )
     else:
         st.warning("No hay registros para mostrar.")
-
-with tab5:
-    st.subheader("Diccionario de Campos Oficiales de la API del INDEC")
-    st.markdown("Detalle técnico de cada columna consumida desde el [Catálogo API-INDEC](https://api.indec.gob.ar/datasets/ipc_nacional):")
-    
-    diccionario_campos = [
-        {"Columna": "clasificador", "Tipo": "Texto", "Descripción": "Clasificador utilizado para organizar y codificar las categorías del dato."},
-        {"Columna": "nivel", "Tipo": "Texto", "Descripción": "Nivel de desagregación de la categoría dentro de la estructura del clasificador."},
-        {"Columna": "codigo", "Tipo": "Texto", "Descripción": "Código asignado a la categoría de acuerdo con el clasificador utilizado."},
-        {"Columna": "descripcion", "Tipo": "Texto", "Descripción": "Denominación de la categoría correspondiente al código informado."},
-        {"Columna": "periodo", "Tipo": "Texto", "Descripción": "Período de referencia del dato, expresado en formato AAAAMM (meses)."},
-        {"Columna": "anio", "Tipo": "Decimal", "Descripción": "Año correspondiente al período de referencia del dato."},
-        {"Columna": "mes", "Tipo": "Decimal", "Descripción": "Número del mes correspondiente al período de referencia (1 a 12)."},
-        {"Columna": "indicador", "Tipo": "Texto", "Descripción": "Nombre del indicador estadístico."},
-        {"Columna": "tipo_de_indicador", "Tipo": "Texto", "Descripción": "Tipo de cálculo o presentación del indicador (ej: índice, variación, etc.)."},
-        {"Columna": "tipo_de_indicador_descripcion", "Tipo": "Texto", "Descripción": "Descripción detallada del tipo de indicador."},
-        {"Columna": "region", "Tipo": "Texto", "Descripción": "Región estadística a la que corresponde el dato."},
-        {"Columna": "unidad_de_medida", "Tipo": "Texto", "Descripción": "Unidad en la que se expresa el valor del indicador."},
-        {"Columna": "valor", "Tipo": "Decimal", "Descripción": "Valor del indicador para el período y las categorías informadas."},
-        {"Columna": "observaciones", "Tipo": "Texto", "Descripción": "Notas necesarias o signos convencionales para el valor informado."}
-    ]
-    
-    st.dataframe(pd.DataFrame(diccionario_campos), width="stretch")
