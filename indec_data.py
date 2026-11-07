@@ -13,7 +13,7 @@ def obtener_datos_inflacion():
     offset = 0
     limit = 1000
     
-    # Orden estable obligatorio exigido por la documentación oficial para paginar
+    # Orden estable obligatorio según la documentación oficial del Catálogo API-INDEC
     order_params = "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida"
     
     try:
@@ -24,20 +24,20 @@ def obtener_datos_inflacion():
                 "offset": offset
             }
             
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
             
             if response.status_code == 200:
                 data = response.json()
-                if not data or len(data) == 0:
+                if not data or not isinstance(data, list) or len(data) == 0:
                     break
+                
                 all_data.extend(data)
                 
-                # Si recibimos menos del límite, llegamos al final
                 if len(data) < limit:
                     break
                 offset += limit
             else:
-                print(f"Error API INDEC - Status Code: {response.status_code}")
+                print(f"Error en API INDEC - Status Code: {response.status_code}")
                 break
                 
         if not all_data:
@@ -45,12 +45,12 @@ def obtener_datos_inflacion():
             
         df = pd.DataFrame(all_data)
         
-        # Tipado estricto de acuerdo al esquema oficial
-        df["anio"] = pd.to_numeric(df["anio"], errors="coerce")
-        df["mes"] = pd.to_numeric(df["mes"], errors="coerce")
-        df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+        # Tipado estricto exigido
+        for col in ["anio", "mes", "valor", "nivel"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
         
-        # Limpieza de textos nulos o vacíos
+        # Limpieza de espacios en blanco en columnas de texto
         campos_texto = [
             "clasificador", "nivel", "codigo", "descripcion", "periodo", 
             "indicador", "tipo_de_indicador", "tipo_de_indicador_descripcion", 
@@ -58,20 +58,23 @@ def obtener_datos_inflacion():
         ]
         for campo in campos_texto:
             if campo in df.columns:
-                df[campo] = df[campo].astype(str).str.strip().replace("nan", None)
+                df[campo] = df[campo].astype(str).str.strip().replace(["nan", "None", ""], None)
                 
-        # Columnas auxiliares temporales legibles para análisis
+        # Columnas auxiliares de lectura limpia para la traza temporal
         meses_dict = {
             1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
             7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
         }
-        df["Mes_Texto"] = df["mes"].map(meses_dict)
-        df["Anio_Int"] = df["anio"].fillna(0).astype(int)
-        df["Periodo_Texto"] = df["Mes_Texto"] + " " + df["Anio_Int"].astype(str)
         
+        if "mes" in df.columns and "anio" in df.columns:
+            df["Mes_Texto"] = df["mes"].map(meses_dict).fillna("")
+            df["Anio_Int"] = df["anio"].fillna(0).astype(int)
+            df["Periodo_Texto"] = df["Mes_Texto"] + " " + df["Anio_Int"].astype(str)
+        else:
+            df["Periodo_Texto"] = df.get("periodo", "")
+            
         return df
 
     except Exception as e:
-        print(f"Excepción crítica en obtener_datos_inflacion: {e}")
-
-    return pd.DataFrame()
+        print(f"Excepción crítica al conectar con la API del INDEC: {e}")
+        return pd.DataFrame()
