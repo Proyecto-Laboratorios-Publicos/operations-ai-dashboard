@@ -92,7 +92,7 @@ with tab1:
     st.divider()
     st.subheader(f"📈 Evolución Histórica ({opcion_historica})")
     if not df_filtrado.empty and "Mes" in df_filtrado.columns and "Inflacion_Mensual" in df_filtrado.columns:
-        st.line_chart(df_filtrado.set_index("Mes")[["Inflacion_Mensual"]])
+        st.line_chart(df_filtrado.set_index("Mes")[["Inflacion_Mensual"]], width="stretch")
     else:
         st.warning("No hay datos históricos para mostrar en el gráfico.")
 
@@ -104,8 +104,8 @@ with tab2:
         if cols_sector and len(df_indec) > 0:
             ultimo_reg = df_indec.iloc[-1][cols_sector].reset_index()
             ultimo_reg.columns = ["División", "Variación (%)"]
-            st.bar_chart(ultimo_reg.set_index("División"))
-        st.dataframe(df_indec)
+            st.bar_chart(ultimo_reg.set_index("División"), width="stretch")
+        st.dataframe(df_indec, width="stretch")
     else:
         st.warning("Sin datos sectoriales para mostrar.")
 
@@ -113,7 +113,7 @@ with tab3:
     st.subheader("Base de Datos Histórica Oficial Normalizada")
     st.markdown("Visualiza la totalidad de los datos estructurados provenientes del endpoint oficial del INDEC:")
     if not df_indec.empty:
-        st.dataframe(df_indec)
+        st.dataframe(df_indec, width="stretch")
         csv = df_indec.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="📥 Descargar Histórico Completo en CSV",
