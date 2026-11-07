@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 
-# Configuración de la página
 st.set_page_config(
     page_title="Dashboard de Inflación y Analítica - INDEC",
     page_icon="📊",
@@ -15,80 +14,8 @@ Plataforma inteligente de analítica impulsada por series temporales históricas
 Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
 """)
 
-# Cargar base de datos cruda desde la API
-df_raw = obtener_datos_inflacion()
+df_indec = obtener_datos_inflacion()
 
-df_indec = pd.DataFrame()
-
-if not df_raw.empty:
-    df_proc = df_raw.copy()
-    
-    # 1. Filtrar región nacional si existe
-    if "region" in df_proc.columns:
-        mask = df_proc["region"].str.contains("Total del país|Total Nacional", case=False, na=False)
-        if mask.any():
-            df_proc = df_proc[mask]
-
-    # 2. Filtrar estrictamente por tipo de indicador mensual para evitar colisiones
-    if "tipo_de_indicador" in df_proc.columns:
-        mask_ind = df_proc["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)
-        if mask_ind.any():
-            df_proc = df_proc[mask_ind]
-
-    # 3. Mapeo de meses numéricos a texto amigable
-    meses_dict = {
-        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
-        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
-    }
-                
-    if "mes" in df_proc.columns and "anio" in df_proc.columns:
-        df_proc["anio"] = pd.to_numeric(df_proc["anio"], errors="coerce")
-        df_proc["mes"] = pd.to_numeric(df_proc["mes"], errors="coerce")
-        df_proc["Mes"] = df_proc["mes"].map(meses_dict) + " " + df_proc["anio"].astype(int).astype(str)
-
-    if "descripcion" in df_proc.columns:
-        df_proc["descripcion"] = df_proc["descripcion"].astype(str).str.strip()
-
-    # 4. Eliminar duplicados antes del pivot para garantizar unicidad
-    if {"Mes", "anio", "mes", "descripcion", "valor"}.issubset(df_proc.columns):
-        df_proc = df_proc.drop_duplicates(subset=["anio", "mes", "descripcion"])
-        
-        pivot = df_proc.pivot_table(
-            index=["Mes", "anio", "mes"],
-            columns="descripcion",
-            values="valor",
-            aggfunc="first"
-        ).reset_index()
-        
-        pivot.columns.name = None
-
-        # 5. Mapeo seguro de columnas
-        rename_dict = {}
-        for col in pivot.columns:
-            col_l = str(col).lower()
-            if "nivel general" in col_l:
-                rename_dict[col] = "Inflacion_Mensual"
-            elif "alimentos y bebidas" in col_l:
-                rename_dict[col] = "Alimentos_Bebidas"
-            elif "vivienda" in col_l or "agua" in col_l:
-                rename_dict[col] = "Vivienda_Servicios"
-            elif "transporte" in col_l:
-                rename_dict[col] = "Transporte"
-            elif "salud" in col_l:
-                rename_dict[col] = "Salud"
-
-        pivot = pivot.rename(columns=rename_dict)
-        pivot = pivot.loc[:, ~pivot.columns.duplicated()]
-
-        # Columnas de respaldo por seguridad
-        for col_req in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
-            if col_req not in pivot.columns:
-                pivot[col_req] = 0.0
-
-        # Ordenar cronológicamente ascendente
-        df_indec = pivot.sort_values(by=["anio", "mes"]).copy()
-
-# Barra lateral con controles y filtros
 st.sidebar.header("Panel de Control & Filtros")
 if not df_indec.empty:
     st.sidebar.success("Estado: Conectado a la API oficial en vivo.")
@@ -104,7 +31,7 @@ opcion_historica = st.sidebar.selectbox(
     ],
 )
 
-if not df_indec.empty:
+if not df_indec.empty and "Mes" in df_indec.columns and "Inflacion_Mensual" in df_indec.columns:
     if "12 meses" in opcion_historica:
         df_filtrado = df_indec.tail(12)
     elif "24 meses" in opcion_historica:
@@ -112,14 +39,14 @@ if not df_indec.empty:
     else:
         df_filtrado = df_indec
 
-    if len(df_indec) >= 2 and "Inflacion_Mensual" in df_indec.columns and "Mes" in df_indec.columns:
+    if len(df_indec) >= 2:
         ultimo_mes = df_indec.iloc[-1]["Mes"]
         ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
         inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
         delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
     else:
-        ultimo_mes = df_indec.iloc[-1]["Mes"] if len(df_indec) == 1 and "Mes" in df_indec.columns else "Actual"
-        ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"] if len(df_indec) == 1 and "Inflacion_Mensual" in df_indec.columns else 0.0
+        ultimo_mes = df_indec.iloc[-1]["Mes"]
+        ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
         delta_inflacion = 0.0
 
     st.sidebar.markdown(f"**Última actualización:** {ultimo_mes}")
@@ -130,7 +57,6 @@ else:
     ultima_inflacion = 0.0
     delta_inflacion = 0.0
 
-# Pestañas de navegación
 tab1, tab2, tab3 = st.tabs([
     "📈 Resumen General y Métricas",
     "📊 Análisis Sectorial",
@@ -182,9 +108,9 @@ with tab2:
 with tab3:
     st.subheader("Base de Datos Histórica Oficial Normalizada")
     st.markdown("Visualiza la totalidad de los datos estructurados provenientes del endpoint oficial del INDEC:")
-    if not df_raw.empty:
-        st.dataframe(df_raw, width="stretch")
-        csv = df_raw.to_csv(index=False).encode("utf-8")
+    if not df_indec.empty:
+        st.dataframe(df_indec, width="stretch")
+        csv = df_indec.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="📥 Descargar Histórico Completo en CSV",
             data=csv,
