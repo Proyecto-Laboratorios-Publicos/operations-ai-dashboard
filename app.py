@@ -93,6 +93,7 @@ with tab1:
                 pivot_chart = pivot_chart.sort_values("periodo")
                 pivot_chart.set_index("Periodo_Texto", inplace=True)
                 
+                # Sintaxis actualizada recomendada (Streamlit 1.40+)
                 st.line_chart(pivot_chart.drop(columns=["periodo"], errors="ignore"), width="stretch")
             else:
                 st.warning("No hay registros para las categorías seleccionadas.")
