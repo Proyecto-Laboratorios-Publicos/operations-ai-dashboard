@@ -14,7 +14,6 @@ def obtener_datos_inflacion():
     limit = 1000
     
     try:
-        # Paginación completa respetando la clave primaria de orden estable de la documentación
         while True:
             params = {
                 "order": "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
@@ -38,18 +37,15 @@ def obtener_datos_inflacion():
             
         df = pd.DataFrame(all_data)
         
-        # Conversión de tipos numéricos
         df["anio"] = pd.to_numeric(df["anio"], errors="coerce")
         df["mes"] = pd.to_numeric(df["mes"], errors="coerce")
         df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
         
-        # Filtrar región nacional
         if "region" in df.columns:
             mask_reg = df["region"].astype(str).str.contains("Total del país|Total Nacional", case=False, na=False)
             if mask_reg.any():
                 df = df[mask_reg]
                 
-        # Filtrar indicador mensual
         if "tipo_de_indicador" in df.columns:
             mask_ind = df["tipo_de_indicador"].astype(str).str.contains("variacion|mensual", case=False, na=False)
             if mask_ind.any():
@@ -65,33 +61,33 @@ def obtener_datos_inflacion():
         if "descripcion" in df.columns:
             df["descripcion"] = df["descripcion"].astype(str).str.strip()
             
-        df = df.drop_duplicates(subset=["periodo", "descripcion", "region"])
+        def map_desc(desc):
+            d = desc.lower()
+            if "nivel general" in d:
+                return "Inflacion_Mensual"
+            elif "alimentos y bebidas" in d:
+                return "Alimentos_Bebidas"
+            elif "vivienda" in d or ("agua" in d and "electricidad" in d):
+                return "Vivienda_Servicios"
+            elif "transporte" in d:
+                return "Transporte"
+            elif "salud" in d:
+                return "Salud"
+            return None
+
+        df["categoria_std"] = df["descripcion"].apply(map_desc)
+        df = df.dropna(subset=["categoria_std", "anio", "mes", "valor"])
+        df = df.drop_duplicates(subset=["periodo", "categoria_std", "region"])
         
-        if {"Mes", "anio", "mes", "descripcion", "valor", "periodo"}.issubset(df.columns):
+        if {"Mes", "anio", "mes", "categoria_std", "valor", "periodo"}.issubset(df.columns):
             pivot = df.pivot_table(
                 index=["periodo", "Mes", "anio", "mes"],
-                columns="descripcion",
+                columns="categoria_std",
                 values="valor",
                 aggfunc="first"
             ).reset_index()
             
             pivot.columns.name = None
-            
-            rename_dict = {}
-            for col in pivot.columns:
-                col_l = str(col).lower()
-                if "nivel general" in col_l:
-                    rename_dict[col] = "Inflacion_Mensual"
-                elif "alimentos y bebidas" in col_l:
-                    rename_dict[col] = "Alimentos_Bebidas"
-                elif "vivienda" in col_l or "agua" in col_l:
-                    rename_dict[col] = "Vivienda_Servicios"
-                elif "transporte" in col_l:
-                    rename_dict[col] = "Transporte"
-                elif "salud" in col_l:
-                    rename_dict[col] = "Salud"
-                    
-            pivot = pivot.rename(columns=rename_dict)
             pivot = pivot.loc[:, ~pivot.columns.duplicated(keep="first")]
             
             for col_req in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
