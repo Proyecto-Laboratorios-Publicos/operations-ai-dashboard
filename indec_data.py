@@ -10,9 +10,11 @@ def obtener_datos_inflacion():
     }
     
     try:
+        # Consultamos ordenados por la clave completa según exige la documentación del INDEC
         params = {
-            "limit": 1000,
-            "order": "periodo.asc"
+            "region": "eq.Total del país",
+            "order": "periodo.asc",
+            "limit": 1000
         }
         response = requests.get(url, headers=headers, params=params)
         
@@ -21,25 +23,22 @@ def obtener_datos_inflacion():
             if data:
                 df = pd.DataFrame(data)
                 
-                if {"periodo", "descripcion", "valor", "anio", "mes", "region"}.issubset(df.columns):
-                    # 1. Filtramos la región nacional
-                    df_nacional = df[df["region"].str.contains("Total del país", case=False, na=False)].copy()
-                    if df_nacional.empty:
-                        df_nacional = df.copy()
+                if {"periodo", "descripcion", "valor", "anio", "mes", "tipo_de_indicador"}.issubset(df.columns):
                     
-                    # 2. Formatear mes a texto
+                    # Formateamos el período en formato texto amigable (ej: "Ene 2024")
                     meses_dict = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
                                   7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
-                    df_nacional["Mes_Texto"] = df_nacional["mes"].map(meses_dict) + " " + df_nacional["anio"].astype(int).astype(str)
                     
-                    # 3. Filtrar variaciones mensuales o índices generales
-                    df_filtrado = df_nacional[df_nacional["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)].copy()
+                    df["Mes_Texto"] = df["mes"].map(meses_dict) + " " + df["anio"].astype(int).astype(str)
+                    
+                    # Filtramos exclusivamente por variaciones mensuales (indicador de inflación mensual)
+                    df_filtrado = df[df["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)].copy()
                     
                     if not df_filtrado.empty:
-                        # Limpiamos y normalizamos la descripción para evitar duplicados por mayúsculas/espacios
+                        # Limpiamos y unificamos descripciones
                         df_filtrado["descripcion"] = df_filtrado["descripcion"].astype(str).str.strip()
                         
-                        # Creamos un pivote seguro agrupando por promedio si hay colisiones
+                        # Pivotamos de forma limpia usando el promedio para evitar colisiones por duplicidad de filas
                         pivot = df_filtrado.pivot_table(
                             index=["Mes_Texto", "anio", "mes"],
                             columns="descripcion",
@@ -47,10 +46,9 @@ def obtener_datos_inflacion():
                             aggfunc="mean"
                         ).reset_index()
                         
-                        # Aplanamos los nombres de columnas por seguridad
                         pivot.columns.name = None
                         
-                        # Buscamos dinámicamente las columnas clave basadas en coincidencias parciales
+                        # Mapeo exacto de las divisiones requeridas por tu dashboard
                         rename_dict = {"Mes_Texto": "Mes"}
                         for col in pivot.columns:
                             col_l = str(col).lower()
@@ -67,10 +65,9 @@ def obtener_datos_inflacion():
                                 
                         pivot = pivot.rename(columns=rename_dict)
                         
-                        # Eliminamos cualquier columna duplicada remanente en el eje de columnas
+                        # Eliminamos duplicados en las columnas del DataFrame resultante por seguridad absoluta
                         pivot = pivot.loc[:, ~pivot.columns.duplicated()]
                         
-                        # Seleccionamos estrictamente solo las columnas que existan
                         cols_deseadas = ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]
                         cols_presentes = [c for c in cols_deseadas if c in pivot.columns]
                         
