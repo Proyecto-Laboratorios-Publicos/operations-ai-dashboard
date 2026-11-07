@@ -1,9 +1,12 @@
+import os
 import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
-    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiI2NzY4MGVlYy0zMGIwLTQxNGQtYTYxNS1hNDdiYmQxNDVjMzUiLCJleHAiOjE4MDk2MzQ0MDEsImlhdCI6MTc5NDA4MjQwMSwicm9sZSI6ImJhc2ljIn0.nOjwAJYUZsMUM60rC5aDldcujyi3Mt-3e_P2O6dukL4"
+    
+    # Obtener token desde variable de entorno con respaldo por defecto
+    token = os.getenv("INDEC_API_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiI2NzY4MGVlYy0zMGIwLTQxNGQtYTYxNS1hNDdiYmQxNDVjMzUiLCJleHAiOjE4MDk2MzQ0MDEsImlhdCI6MTc5NDA4MjQwMSwicm9sZSI6ImJhc2ljIn0.nOjwAJYUZsMUM60rC5aDldcujyi3Mt-3e_P2O6dukL4")
     
     headers = {
         "Authorization": f"Bearer {token}"
@@ -37,7 +40,9 @@ def obtener_datos_inflacion():
                     break
                 offset += limit
             else:
-                print(f"DEBUG API INDEC - Status Code: {response.status_code}")
+                # Diagnóstico avanzado en consola para errores de autenticación o formato (401, 403, 400)
+                print(f"[ERROR API INDEC] Status Code: {response.status_code}")
+                print(f"[DETALLES RESPUESTA]: {response.text}")
                 break
                 
         if not all_data:
@@ -73,11 +78,11 @@ def obtener_datos_inflacion():
         else:
             df["Periodo_Texto"] = df.get("periodo", "")
             
-        # PREVENCIÓN CRÍTICA: Eliminar columnas duplicadas si existieran para evitar fallos de PyArrow
+        # PREVENCIÓN CRÍTICA: Eliminar columnas duplicadas para evitar excepciones en PyArrow
         df = df.loc[:, ~df.columns.duplicated()].copy()
             
         return df
 
     except Exception as e:
-        print(f"Excepción crítica al conectar con la API del INDEC: {e}")
+        print(f"[EXCEPCIÓN CRÍTICA CONEXIÓN INDEC]: {e}")
         return pd.DataFrame()
