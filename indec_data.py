@@ -28,10 +28,10 @@ def obtener_datos_inflacion():
                     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
                     
                     if "region" in df.columns:
-                        df = df[df["region"].str.contains("Total del país|Total Nacional", case=False, na=False)]
+                        df = df[df["region"].astype(str).str.contains("Total del país|Total Nacional", case=False, na=False)]
                         
                     if "tipo_de_indicador" in df.columns:
-                        df = df[df["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)]
+                        df = df[df["tipo_de_indicador"].astype(str).str.contains("variacion|mensual", case=False, na=False)]
                         
                     meses_dict = {
                         1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
@@ -66,7 +66,7 @@ def obtener_datos_inflacion():
                             rename_dict[col] = "Salud"
                             
                     pivot = pivot.rename(columns=rename_dict)
-                    pivot = pivot.loc[:, ~pivot.columns.duplicated()]
+                    pivot = pivot.loc[:, ~pivot.columns.duplicated(keep="first")]
                     
                     for col_req in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
                         if col_req not in pivot.columns:
