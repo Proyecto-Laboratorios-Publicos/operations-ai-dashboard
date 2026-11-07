@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 
@@ -27,16 +28,16 @@ if df_raw.empty:
     with st.expander("🔍 Guía de resolución de problemas y posibles causas"):
         st.markdown("""
         Esto suele ocurrir por las siguientes razones:
-        1. **Token JWT Expirado o Inválido:** El token Bearer configurado en el entorno o en el código ha caducado. Debe generar uno nuevo desde su perfil en el [Catálogo API-INDEC](https://api.indec.gob.ar/docs).
+        1. **Token JWT Expirado o Inválido:** El token Bearer configurado en el entorno o en el código ha caducado. Debe generar uno nuevo desde su perfil en el [Catálogo API-INDEC](https://api.indec.gob.ar/account).
         2. **Límite de cuota o caídas temporales:** El servidor de la API del INDEC podría estar experimentando mantenimiento temporal.
-        3. **Configuración de Variables de Entorno:** Verifique que la variable `INDEC_API_TOKEN` esté configurada correctamente en los secretos o ajustes de su despliegue en Streamlit Cloud.
+        3. **Configuración de Variables de Entorno:** Verifique que la variable `INDEC_API_TOKEN` esté configurada correctamente en los secretos de su despliegue en Streamlit Cloud.
         """)
     st.stop()
 
 # Barra lateral de filtros oficiales basados estrictamente en la documentación
 st.sidebar.header("🎛️ Filtros Oficiales API")
 
-# 1. Selector obligatorio de Tipo de Indicador para evitar mezclar métricas heterogéneas
+# 1. Selector obligatorio de Tipo de Indicador
 if "tipo_de_indicador_descripcion" in df_raw.columns:
     tipos_ind = sorted(df_raw["tipo_de_indicador_descripcion"].dropna().unique().astype(str).tolist())
     tipo_ind_sel = st.sidebar.selectbox("Tipo de Indicador:", options=tipos_ind) if tipos_ind else "General"
@@ -91,18 +92,23 @@ with tab1:
             df_subset = df_filtrado[df_filtrado["descripcion"].isin(desc_elegidas)].copy()
             
             if not df_subset.empty:
-                pivot_chart = df_subset.pivot_table(
-                    index=["periodo", "Periodo_Texto"],
-                    columns="descripcion",
-                    values="valor",
-                    aggfunc="first"
-                ).reset_index()
+                df_subset = df_subset.sort_values("periodo")
                 
-                pivot_chart = pivot_chart.sort_values("periodo")
-                pivot_chart.set_index("Periodo_Texto", inplace=True)
-                
-                # Sintaxis actualizada recomendada (Streamlit 1.40+)
-                st.line_chart(pivot_chart.drop(columns=["periodo"], errors="ignore"), width="stretch")
+                # Gráfico interactivo con Plotly (evita errores de esquema en Altair/Streamlit)
+                fig = px.line(
+                    df_subset,
+                    x="Periodo_Texto",
+                    y="valor",
+                    color="descripcion",
+                    markers=True,
+                    labels={"Periodo_Texto": "Período", "valor": "Valor del Indicador", "descripcion": "Categoría"}
+                )
+                fig.update_layout(
+                    xaxis_tickangle=-45,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(l=20, r=20, t=40, b=20)
+                )
+                st.plotly_chart(fig, width="stretch")
             else:
                 st.warning("No hay registros para las categorías seleccionadas.")
         else:
