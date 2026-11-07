@@ -37,7 +37,7 @@ def obtener_datos_inflacion():
                     break
                 offset += limit
             else:
-                print(f"Error en API INDEC - Status Code: {response.status_code}")
+                print(f"DEBUG API INDEC - Status Code: {response.status_code}")
                 break
                 
         if not all_data:
@@ -72,6 +72,9 @@ def obtener_datos_inflacion():
             df["Periodo_Texto"] = df["Mes_Texto"] + " " + df["Anio_Int"].astype(str)
         else:
             df["Periodo_Texto"] = df.get("periodo", "")
+            
+        # PREVENCIÓN CRÍTICA: Eliminar columnas duplicadas si existieran para evitar fallos de PyArrow
+        df = df.loc[:, ~df.columns.duplicated()].copy()
             
         return df
 
