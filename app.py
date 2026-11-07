@@ -2,131 +2,66 @@ import pandas as pd
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 
-# Configuración inicial de la página
-st.set_page_config(
-    page_title="Dashboard Oficial IPC - INDEC",
-    page_icon="📊",
-    layout="wide",
-)
+st.set_page_config(page_title="Dashboard IPC - INDEC", page_icon="📊", layout="wide")
 
 st.title("📊 Panel de Análisis Oficial - IPC INDEC")
-st.markdown("""
-Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC.
-Explora las series temporales oficiales explotando todos los campos disponibles.
-""")
+st.markdown("Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC.")
 
 @st.cache_data(ttl=3600)
-def cargar_datos():
+def cargar():
     return obtener_datos_inflacion()
 
-df_raw = cargar_datos()
-
-if df_raw.empty:
-    st.error("No se pudieron recuperar datos desde la API del INDEC. Verifique el token de autenticación o la conexión.")
+df = cargar()
+if df.empty:
+    st.error("No se pudieron recuperar datos de la API del INDEC.")
     st.stop()
 
-# Barra lateral de filtros oficiales basados estrictamente en la documentación
-st.sidebar.header("🎛️ Filtros Oficiales API")
+st.sidebar.header("🎛️ Filtros Oficiales")
+tipos = sorted(df["tipo_de_indicador_descripcion"].dropna().unique()) if "tipo_de_indicador_descripcion" in df else []
+tipo_sel = st.sidebar.selectbox("Tipo de Indicador:", tipos) if tipos else "General"
+df_f = df[df["tipo_de_indicador_descripcion"] == tipo_sel].copy() if tipos else df.copy()
 
-# 1. Selector obligatorio de Tipo de Indicador para evitar mezclar métricas heterogéneas
-if "tipo_de_indicador_descripcion" in df_raw.columns:
-    tipos_ind = sorted(df_raw["tipo_de_indicador_descripcion"].dropna().unique().tolist())
-    tipo_ind_sel = st.sidebar.selectbox("Tipo de Indicador:", options=tipos_ind)
-    df_filtrado = df_raw[df_raw["tipo_de_indicador_descripcion"] == tipo_ind_sel].copy()
-else:
-    df_filtrado = df_raw.copy()
-    tipo_ind_sel = "General"
+regs = sorted(df_f["region"].dropna().unique()) if "region" in df_f else []
+reg_sel = st.sidebar.selectbox("Región:", ["Todas"] + regs) if regs else "Todas"
+if reg_sel != "Todas":
+    df_f = df_f[df_f["region"] == reg_sel]
 
-# 2. Selector de Región Estadística
-if "region" in df_filtrado.columns:
-    regiones = sorted(df_filtrado["region"].dropna().unique().tolist())
-    region_sel = st.sidebar.selectbox("Región Estadística:", options=["Todas"] + regiones)
-    if region_sel != "Todas":
-        df_filtrado = df_filtrado[df_filtrado["region"] == region_sel]
-
-# 3. Multiselector de Clasificadores
-if "clasificador" in df_filtrado.columns:
-    clasificadores = sorted(df_filtrado["clasificador"].dropna().unique().tolist())
-    clasificador_sel = st.sidebar.multiselect("Clasificador:", options=clasificadores, default=clasificadores)
-    if clasificador_sel:
-        df_filtrado = df_filtrado[df_filtrado["clasificador"].isin(clasificador_sel)]
+clas = sorted(df_f["clasificador"].dropna().unique()) if "clasificador" in df_f else []
+clas_sel = st.sidebar.multiselect("Clasificador:", clas, default=clas) if clas else []
+if clas_sel:
+    df_f = df_f[df_f["clasificador"].isin(clas_sel)]
 
 st.sidebar.divider()
-st.sidebar.markdown(f"**Registros totales:** {len(df_raw):,}")
-st.sidebar.markdown(f"**Registros filtrados:** {len(df_filtrado):,}")
+st.sidebar.markdown(f"**Registros:** {len(df_f):,}")
 
-# Pestañas de análisis estructuradas
-tab1, tab2, tab3 = st.tabs([
-    "📈 Series Temporales por Descripción",
-    "📊 Desglose de Niveles y Códigos",
-    "📋 Explorador de Datos Crudos"
-])
+t1, t2, t3 = st.tabs(["📈 Series Temporales", "📊 Niveles", "📋 Datos Crudos"])
 
-with tab1:
-    st.subheader(f"Evolución Temporal ({tipo_ind_sel})")
-    st.markdown("Comportamiento histórico agrupado mediante los campos **periodo** y **Periodo_Texto**.")
-    
-    if not df_filtrado.empty and "valor" in df_filtrado.columns and "descripcion" in df_filtrado.columns:
-        descripciones = sorted(df_filtrado["descripcion"].dropna().unique().tolist())
-        
-        default_desc = [d for d in descripciones if "nivel general" in d.lower()]
-        if not default_desc:
-            default_desc = descripciones[:3] if len(descripciones) >= 3 else descripciones
-            
-        desc_elegidas = st.multiselect(
-            "Seleccionar Categorías / Descripciones:",
-            options=descripciones,
-            default=default_desc
-        )
-        
-        if desc_elegidas:
-            df_subset = df_filtrado[df_filtrado["descripcion"].isin(desc_elegidas)].copy()
-            
-            if not df_subset.empty:
-                pivot_chart = df_subset.pivot_table(
-                    index=["periodo", "Periodo_Texto"],
-                    columns="descripcion",
-                    values="valor",
-                    aggfunc="first"
-                ).reset_index()
-                
-                pivot_chart = pivot_chart.sort_values("periodo")
-                pivot_chart.set_index("Periodo_Texto", inplace=True)
-                
-                st.line_chart(pivot_chart.drop(columns=["periodo"], errors="ignore"), width="stretch")
-            else:
-                st.warning("No hay registros para las categorías seleccionadas.")
+with t1:
+    st.subheader(f"Evolución Temporal ({tipo_sel})")
+    if not df_f.empty and "valor" in df_f and "descripcion" in df_f:
+        descs = sorted(df_f["descripcion"].dropna().unique())
+        def_d = [d for d in descs if "nivel general" in d.lower()] or descs[:3]
+        sel_d = st.multiselect("Categorías:", descs, default=def_d)
+        if sel_d:
+            sub = df_f[df_f["descripcion"].isin(sel_d)]
+            pivot = sub.pivot_table(index=["periodo", "Periodo_Texto"], columns="descripcion", values="valor", aggfunc="first").reset_index()
+            pivot = pivot.sort_values("periodo").set_index("Periodo_Texto")
+            st.line_chart(pivot.drop(columns=["periodo"], errors="ignore"))
         else:
-            st.info("Seleccione al menos una categoría para graficar la serie temporal.")
+            st.info("Seleccione al menos una categoría.")
     else:
-        st.warning("No hay datos disponibles para los filtros seleccionados.")
+        st.warning("Sin datos disponibles.")
 
-with tab2:
-    st.subheader("Estructura por Niveles y Clasificadores")
-    st.markdown("Aprovecha los campos de la clave primaria: **clasificador**, **nivel**, **codigo**, **unidad_de_medida**.")
-    
-    if not df_filtrado.empty and "nivel" in df_filtrado.columns:
-        niveles_disp = sorted(df_filtrado["nivel"].dropna().unique().tolist(), key=str)
-        nivel_sel = st.selectbox("Filtrar por Nivel:", options=["Todos"] + niveles_disp)
-        
-        df_nivel = df_filtrado.copy()
-        if nivel_sel != "Todos":
-            df_nivel = df_nivel[df_nivel["nivel"] == nivel_sel]
-            
-        columnas_mostrar = [col for col in ["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"] if col in df_nivel.columns]
-        st.dataframe(df_nivel[columnas_mostrar].drop_duplicates(), width="stretch")
-    else:
-        st.warning("Sin datos para mostrar en este nivel.")
+with t2:
+    st.subheader("Estructura por Niveles")
+    if not df_f.empty and "nivel" in df_f:
+        nivs = sorted(df_f["nivel"].dropna().unique(), key=str)
+        niv_sel = st.selectbox("Nivel:", ["Todos"] + nivs)
+        df_n = df_f if niv_sel == "Todos" else df_f[df_f["nivel"] == niv_sel]
+        cols = [c for c in ["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor"] if c in df_n]
+        st.dataframe(df_n[cols].drop_duplicates(), use_container_width=True)
 
-with tab3:
-    st.subheader("Explorador de Datos Crudos Oficiales")
-    st.markdown("Visualización directa de la totalidad de columnas devueltas por la API del INDEC.")
-    st.dataframe(df_filtrado, width="stretch")
-    
-    csv = df_filtrado.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="📥 Descargar CSV Filtrado",
-        data=csv,
-        file_name="ipc_indec_filtrado.csv",
-        mime="text/csv",
-    )
+with t3:
+    st.subheader("Explorador de Datos")
+    st.dataframe(df_f, use_container_width=True)
+    st.download_button("📥 Descargar CSV", df_f.to_csv(index=False).encode("utf-8"), "ipc_filtrado.csv", "text/csv")
