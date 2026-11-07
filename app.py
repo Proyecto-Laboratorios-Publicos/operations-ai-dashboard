@@ -15,7 +15,7 @@ Plataforma inteligente de analítica impulsada por series temporales históricas
 Explora la evolución macroeconómica completa, comparativas sectoriales y métricas en tiempo real.
 """)
 
-# Cargar base de datos cruda
+# Cargar base de datos cruda desde la API
 df_raw = obtener_datos_inflacion()
 
 df_indec = pd.DataFrame()
@@ -34,52 +34,28 @@ if not df_raw.empty:
                 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
                 
   if "mes" in df_proc.columns and "anio" in df_proc.columns:
-    df_proc["Mes_Texto"] = df_proc["mes"].map(meses_dict) + " " + df_proc["anio"].astype(int).astype(str)
+    df_proc["Mes"] = df_proc["mes"].map(meses_dict) + " " + df_proc["anio"].astype(int).astype(str)
 
-  if "descripcion" in df_proc.columns:
-    df_proc["descripcion"] = df_proc["descripcion"].astype(str).str.strip()
-
-  # Construcción del pivot table asegurando unicidad de columnas
-  if {"Mes_Texto", "descripcion", "valor"}.issubset(df_proc.columns):
-    pivot = df_proc.pivot_table(
-        index=["Mes_Texto", "anio", "mes"],
-        columns="descripcion",
-        values="valor",
-        aggfunc="mean"
-    ).reset_index()
+  # Si la API ya trae el Nivel General como una métrica directa, la filtramos y preparamos
+  if "descripcion" in df_proc.columns and "valor" in df_proc.columns:
+    # Filtramos la serie de Nivel General para las tarjetas principales
+    df_general = df_proc[df_proc["descripcion"].str.contains("Nivel general", case=False, na=False)].copy()
     
-    pivot.columns.name = None
-
-    rename_dict = {"Mes_Texto": "Mes"}
-    for col in pivot.columns:
-      col_l = str(col).lower()
-      if "nivel general" in col_l:
-        rename_dict[col] = "Inflacion_Mensual"
-      elif "alimentos" in col_l:
-        rename_dict[col] = "Alimentos_Bebidas"
-      elif "vivienda" in col_l or "agua" in col_l:
-        rename_dict[col] = "Vivienda_Servicios"
-      elif "transporte" in col_l:
-        rename_dict[col] = "Transporte"
-      elif "salud" in col_l:
-        rename_dict[col] = "Salud"
-
-    pivot = pivot.rename(columns=rename_dict)
-    pivot = pivot.loc[:, ~pivot.columns.duplicated()]
-
-    for req in ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
-      if req not in pivot.columns and req != "Mes":
-        pivot[req] = 0.0
-
-    if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
-      df_indec = pivot.sort_values(by=["anio", "mes"]).dropna(subset=["Inflacion_Mensual"])
+    if not df_general.empty:
+      df_indec = df_general.sort_values(by=["anio", "mes"]).copy()
+      # Renombramos el valor oficial a la métrica que espera el dashboard
+      df_indec["Inflacion_Mensual"] = df_indec["valor"]
+    else:
+      df_indec = df_proc.copy()
+      if "valor" in df_indec.columns:
+        df_indec["Inflacion_Mensual"] = df_indec["valor"]
 
 # Barra lateral con controles y filtros
 st.sidebar.header("Panel de Control & Filtros")
 if not df_indec.empty:
   st.sidebar.success("Estado: Conectado a la API oficial en vivo.")
 else:
-  st.sidebar.error("Estado: Procesando o sin datos disponibles.")
+  st.sidebar.error("Estado: Sin datos disponibles desde la API.")
 
 opcion_historica = st.sidebar.selectbox(
     "Rango temporal de análisis:",
@@ -99,12 +75,12 @@ if not df_indec.empty:
     df_filtrado = df_indec
 
   if len(df_indec) >= 2:
-    ultimo_mes = df_indec.iloc[-1]["Mes"]
+    ultimo_mes = df_indec.iloc[-1]["Mes"] if "Mes" in df_indec.columns else "Actual"
     ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"]
     inflacion_anterior = df_indec.iloc[-2]["Inflacion_Mensual"]
     delta_inflacion = round(ultima_inflacion - inflacion_anterior, 2)
   else:
-    ultimo_mes = df_indec.iloc[-1]["Mes"] if len(df_indec) == 1 else "Actual"
+    ultimo_mes = df_indec.iloc[-1]["Mes"] if len(df_indec) == 1 and "Mes" in df_indec.columns else "Actual"
     ultima_inflacion = df_indec.iloc[-1]["Inflacion_Mensual"] if len(df_indec) == 1 else 0.0
     delta_inflacion = 0.0
 
@@ -119,7 +95,7 @@ else:
 # Pestañas de navegación
 tab1, tab2, tab3 = st.tabs([
     "📈 Resumen General y Métricas",
-    "📊 Análisis Sectorial por Divisiones",
+    "📊 Análisis Sectorial",
     "📋 Explorador de Datos Completos",
 ])
 
@@ -133,13 +109,13 @@ with tab1:
         delta=f"{delta_inflacion}%",
     )
   with col2:
-    promedio_movil = round(df_filtrado["Inflacion_Mensual"].mean(), 2) if not df_filtrado.empty else 0.0
+    promedio_movil = round(df_filtrado["Inflacion_Mensual"].mean(), 2) if not df_filtrado.empty and "Inflacion_Mensual" in df_filtrado.columns else 0.0
     st.metric(
         label="Promedio Móvil (Período Seleccionado)",
         value=f"{promedio_movil}%",
     )
   with col3:
-    max_mensual = df_filtrado["Inflacion_Mensual"].max() if not df_filtrado.empty else 0.0
+    max_mensual = df_filtrado["Inflacion_Mensual"].max() if not df_filtrado.empty and "Inflacion_Mensual" in df_filtrado.columns else 0.0
     st.metric(
         label="Máximo Mensual del Período",
         value=f"{max_mensual}%"
@@ -147,40 +123,25 @@ with tab1:
 
   st.divider()
   st.subheader(f"📈 Evolución Histórica ({opcion_historica})")
-  if not df_filtrado.empty:
-    cols_grafico = [c for c in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if c in df_filtrado.columns]
-    st.line_chart(df_filtrado.set_index("Mes")[cols_grafico], width="stretch")
+  if not df_filtrado.empty and "Mes" in df_filtrado.columns and "Inflacion_Mensual" in df_filtrado.columns:
+    st.line_chart(df_filtrado.set_index("Mes")[["Inflacion_Mensual"]], width="stretch")
   else:
     st.warning("No hay datos históricos para mostrar en el gráfico.")
 
 with tab2:
-  st.subheader("Comparativa y Tendencia por División")
-  col_a, col_b = st.columns(2)
-  with col_a:
-    st.markdown(f"### Desglose del Último Mes ({ultimo_mes})")
-    if not df_indec.empty:
-      cols_desglose = [c for c in ["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if c in df_indec.columns]
-      if cols_desglose:
-        ultimo_registro = df_indec.iloc[-1][cols_desglose].reset_index()
-        ultimo_registro.columns = ["Division", "Porcentaje"]
-        st.bar_chart(ultimo_registro.set_index("Division"), width="stretch")
-      else:
-        st.info("No hay columnas sectoriales disponibles.")
-    else:
-      st.warning("Sin datos para mostrar.")
-  with col_b:
-    st.markdown(f"### Tendencia Acumulada ({opcion_historica})")
-    if not df_filtrado.empty and cols_grafico:
-      st.area_chart(df_filtrado.set_index("Mes")[cols_grafico], width="stretch")
-    else:
-      st.warning("Sin datos para graficar tendencias.")
+  st.subheader("Comparativa y Tendencia Sectorial")
+  st.markdown(f"### Desglose del Último Período ({ultimo_mes})")
+  if not df_indec.empty:
+    st.dataframe(df_indec, width="stretch")
+  else:
+    st.warning("Sin datos sectoriales para mostrar.")
 
 with tab3:
   st.subheader("Base de Datos Histórica Oficial Normalizada")
   st.markdown("Visualiza la totalidad de los datos estructurados provenientes del endpoint oficial del INDEC:")
-  if not df_indec.empty:
-    st.dataframe(df_indec, width="stretch")
-    csv = df_indec.to_csv(index=False).encode("utf-8")
+  if not df_raw.empty:
+    st.dataframe(df_raw, width="stretch")
+    csv = df_raw.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Descargar Histórico Completo en CSV",
         data=csv,
