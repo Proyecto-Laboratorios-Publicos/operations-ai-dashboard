@@ -6,7 +6,7 @@ def obtener_datos_inflacion():
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
     # Obtener token desde variable de entorno con respaldo por defecto
-    token = os.getenv("INDEC_API_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiI2NzY4MGVlYy0zMGIwLTQxNGQtYTYxNS1hNDdiYmQxNDVjMzUiLCJleHAiOjE4MDk2MzQ0MDEsImlhdCI6MTc5NDA4MjQwMSwicm9sZSI6ImJhc2ljIn0.nOjwAJYUZsMUM60rC5aDldcujyi3Mt-3e_P2O6dukL4")
+    token = os.getenv("INDEC_API_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYmE1YzU0ZS1iMTk3LTQ2ZTEtYWEzNS0zNWYyMzE2YTE2NWEiLCJqdGkiOiJiNWU4ZTFhZC1kYzAzLTQ2MGEtYWI1Ni03MGM5YmJmNzRlNTUiLCJleHAiOjE4MDk2NDQxNTIsImlhdCI6MTc5NDA5MjE1Miwicm9sZSI6ImJhc2ljIn0.ijTrMytJVAndFhlUoCF7mJn0L7lQZcOK80saHbc9ovQ")
     
     headers = {
         "Authorization": f"Bearer {token}"
