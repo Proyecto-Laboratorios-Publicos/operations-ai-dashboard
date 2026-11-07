@@ -3,6 +3,9 @@ import pandas as pd
 import requests
 
 def obtener_datos_inflacion():
+    # URL absoluta oficial según la documentación de la API del INDEC
+    url = "https://api.indec.gob.ar/v1/ipc_nacional"
+    
     # Token JWT oficial de tu cuenta
     token = os.getenv(
         "INDEC_API_TOKEN", 
@@ -23,10 +26,13 @@ def obtener_datos_inflacion():
     
     try:
         while True:
-            # Construcción directa de la URL con los query parameters limpios
-            url = f"https://api.indec.gob.ar/v1/ipc_nacional?order={order_str}&limit={limit}&offset={offset}"
+            params = {
+                "order": order_str,
+                "limit": limit,
+                "offset": offset
+            }
             
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
             
             # La API de PostgREST del INDEC devuelve 200 (OK) o 206 (Partial Content con count=exact)
             if response.status_code in [200, 206]:
