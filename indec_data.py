@@ -10,7 +10,6 @@ def obtener_datos_inflacion():
     }
     
     try:
-        # Solicitamos los datos ordenados cronológicamente
         params = {
             "limit": 1000,
             "order": "periodo.asc"
@@ -23,59 +22,63 @@ def obtener_datos_inflacion():
                 df = pd.DataFrame(data)
                 
                 if {"periodo", "descripcion", "valor", "anio", "mes", "region"}.issubset(df.columns):
-                    # Filtramos la región nacional principal
+                    # Filtramos exclusivamente la región nacional
                     df_nacional = df[df["region"].str.contains("Total del país", case=False, na=False)].copy()
                     if df_nacional.empty:
                         df_nacional = df.copy()
                     
-                    # Diccionario para formatear el mes
+                    # Formateamos el mes a texto (ej: "Ene 2024")
                     meses_dict = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
                                   7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
                     
                     df_nacional["Mes_Texto"] = df_nacional["mes"].map(meses_dict) + " " + df_nacional["anio"].astype(int).astype(str)
                     
-                    # Filtramos por variaciones porcentuales mensuales para asegurar limpieza en los gráficos
+                    # Filtramos variaciones mensuales y eliminamos duplicados exactos en origen
                     df_filtrado = df_nacional[df_nacional["tipo_de_indicador"].str.contains("variacion|mensual|indice", case=False, na=False)].copy()
+                    df_filtrado = df_filtrado.drop_duplicates(subset=["periodo", "descripcion"])
                     
                     if not df_filtrado.empty:
                         pivot = df_filtrado.pivot_table(
                             index=["Mes_Texto", "anio", "mes"],
                             columns="descripcion",
                             values="valor",
-                            aggfunc="first"
+                            aggfunc="mean"  # Usamos mean por seguridad ante posibles solapamientos
                         ).reset_index()
                         
-                        # Limpiamos nombres de columnas de niveles jerárquicos si existen
+                        # Limpiamos nombres de columnas
                         pivot.columns = [str(c).strip() for c in pivot.columns]
                         
-                        # Mapeo exacto basado en los nombres reales que entrega la API
+                        # Mapeo estricto y seguro de columnas clave
                         rename_dict = {"Mes_Texto": "Mes"}
                         for col in pivot.columns:
-                            if "nivel general" in col.lower():
+                            col_lower = col.lower()
+                            if "nivel general" in col_lower and "Inflacion_Mensual" not in rename_dict.values():
                                 rename_dict[col] = "Inflacion_Mensual"
-                            elif "alimentos" in col.lower():
+                            elif "alimentos y bebidas" in col_lower and "Alimentos_Bebidas" not in rename_dict.values():
                                 rename_dict[col] = "Alimentos_Bebidas"
-                            elif "vivienda" in col.lower() or "agua" in col.lower():
+                            elif ("vivienda" in col_lower or "agua" in col_lower) and "Vivienda_Servicios" not in rename_dict.values():
                                 rename_dict[col] = "Vivienda_Servicios"
-                            elif "transporte" in col.lower():
+                            elif "transporte" in col_lower and "Transporte" not in rename_dict.values():
                                 rename_dict[col] = "Transporte"
-                            elif "salud" in col.lower():
+                            elif "salud" in col_lower and "Salud" not in rename_dict.values():
                                 rename_dict[col] = "Salud"
                                 
                         pivot = pivot.rename(columns=rename_dict)
                         
+                        # Nos aseguramos de conservar solo las columnas mapeadas y únicas
+                        cols_finales = ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]
+                        cols_existentes = [c for c in cols_finales if c in pivot.columns]
+                        
+                        pivot = pivot[cols_existentes]
+                        
+                        # Eliminamos cualquier columna duplicada remanente en el DataFrame final
+                        pivot = pivot.loc[:, ~pivot.columns.duplicated()]
+                        
                         if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
-                            pivot = pivot.sort_values(by=["anio", "mes"]).dropna(subset=["Inflacion_Mensual"])
-                            
-                            # Aseguramos que las columnas clave existan para no romper los gráficos de Streamlit
-                            for col_req in ["Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
-                                if col_req not in pivot.columns:
-                                    pivot[col_req] = 0.0 # Rellenamos con 0 si alguna división no viene en el lote
-                                    
-                            return pivot[["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]]
+                            pivot = pivot.sort_values(by=["Mes"]).dropna(subset=["Inflacion_Mensual"])
+                            return pivot
 
     except Exception as e:
         print(f"Error procesando API INDEC: {e}")
 
-    # Si ocurre algún fallo de red, retornamos un DataFrame vacío controlado
     return pd.DataFrame()
