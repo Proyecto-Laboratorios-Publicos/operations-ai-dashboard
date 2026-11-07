@@ -10,27 +10,35 @@ def obtener_datos_inflacion():
     }
     
     try:
-        # Filtramos por región Total del país y ordenamos por la clave completa
+        # Solicitamos los datos ordenados sin filtros estrictos de texto al inicio para inspeccionar y filtrar en crudo
         params = {
-            "region": "eq.Total del país",
             "order": "periodo.asc",
             "limit": 1000
         }
         response = requests.get(url, headers=headers, params=params)
         
+        print(f"DEBUG API INDEC - Status Code: {response.status_code}")
+        
         if response.status_code == 200:
             data = response.json()
             if data:
                 df = pd.DataFrame(data)
+                print(f"DEBUG API INDEC - Registros totales obtenidos: {len(df)}")
                 
-                if {"periodo", "descripcion", "valor", "anio", "mes"}.issubset(df.columns):
+                if {"periodo", "descripcion", "valor", "anio", "mes", "region"}.issubset(df.columns):
+                    # Filtramos por la región general disponible (por ejemplo, que contenga 'Total')
+                    df_nacional = df[df["region"].str.contains("Total|País", case=False, na=False)].copy()
+                    
+                    if df_nacional.empty:
+                        df_nacional = df.copy() # Si no encuentra el filtro exacto, usamos el set completo para mapear
+                        
                     meses_dict = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
                                   7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"}
                     
-                    df["Mes_Texto"] = df["mes"].map(meses_dict) + " " + df["anio"].astype(int).astype(str)
+                    df_nacional["Mes_Texto"] = df_nacional["mes"].map(meses_dict) + " " + df_nacional["anio"].astype(int).astype(str)
                     
-                    # Filtramos por variación porcentual mensual
-                    df_filtrado = df[df["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)].copy()
+                    # Filtramos variaciones mensuales
+                    df_filtrado = df_nacional[df_nacional["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)].copy()
                     
                     if not df_filtrado.empty:
                         pivot = df_filtrado.pivot_table(
@@ -54,14 +62,15 @@ def obtener_datos_inflacion():
                         if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
                             pivot = pivot.sort_values(by=["anio", "mes"]).dropna(subset=["Inflacion_Mensual"])
                             if len(pivot) > 0:
-                                # Devolvemos exactamente las columnas necesarias para el dashboard
                                 available_cols = [col for col in ["Mes", "Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"] if col in pivot.columns]
+                                print("DEBUG API INDEC - ¡Datos procesados con éxito desde la API!")
                                 return pivot[available_cols]
                                 
     except Exception as e:
-        print(f"Error conectando a la API: {e}")
+        print(f"Error crítico conectando a la API: {e}")
 
-    # Fallback de respaldo en caso de intermitencia
+    print("DEBUG API INDEC - Usando fallback estático de respaldo.")
+    # Fallback estático de respaldo
     data_fallback = {
         "Mes": ["Ene 2024", "Feb 2024", "Mar 2024", "Abr 2024", "May 2024", "Jun 2024", 
                 "Jul 2024", "Ago 2024", "Sep 2024", "Oct 2024", "Nov 2024", "Dic 2024",
