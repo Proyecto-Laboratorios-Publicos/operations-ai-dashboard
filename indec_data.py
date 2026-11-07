@@ -10,23 +10,70 @@ def obtener_datos_inflacion():
     }
     
     try:
-        # Orden estable y paginación según la documentación oficial de la API del INDEC
         params = {
-            "order": "clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
-            "limit": 1000
+            "region": "eq.Total del país",
+            "limit": 10000,
+            "order": "periodo.asc"
         }
         
         response = requests.get(url, headers=headers, params=params)
-        print(f"DEBUG INDEC API - Status Code: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if data:
                 df = pd.DataFrame(data)
-                print(f"DEBUG INDEC API - Total registros crudos obtenidos: {len(df)}")
-                return df
+                
+                if not df.empty:
+                    df["anio"] = pd.to_numeric(df["anio"], errors="coerce")
+                    df["mes"] = pd.to_numeric(df["mes"], errors="coerce")
+                    df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+                    df["descripcion"] = df["descripcion"].astype(str).str.strip()
+                    
+                    if "tipo_de_indicador" in df.columns:
+                        df = df[df["tipo_de_indicador"].str.contains("variacion|mensual", case=False, na=False)]
+                    
+                    meses_dict = {
+                        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 
+                        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
+                    }
+                    df["Mes"] = df["mes"].map(meses_dict) + " " + df["anio"].astype(int).astype(str)
+                    
+                    df = df.drop_duplicates(subset=["periodo", "descripcion"])
+                    
+                    pivot = df.pivot_table(
+                        index=["Mes", "anio", "mes"],
+                        columns="descripcion",
+                        values="valor",
+                        aggfunc="mean"
+                    ).reset_index()
+                    
+                    pivot.columns.name = None
+                    
+                    rename_dict = {}
+                    for col in pivot.columns:
+                        col_l = str(col).lower()
+                        if "nivel general" in col_l:
+                            rename_dict[col] = "Inflacion_Mensual"
+                        elif "alimentos y bebidas" in col_l:
+                            rename_dict[col] = "Alimentos_Bebidas"
+                        elif "vivienda" in col_l or "agua" in col_l:
+                            rename_dict[col] = "Vivienda_Servicios"
+                        elif "transporte" in col_l:
+                            rename_dict[col] = "Transporte"
+                        elif "salud" in col_l:
+                            rename_dict[col] = "Salud"
+                            
+                    pivot = pivot.rename(columns=rename_dict)
+                    pivot = pivot.loc[:, ~pivot.columns.duplicated()]
+                    
+                    for col_req in ["Inflacion_Mensual", "Alimentos_Bebidas", "Vivienda_Servicios", "Transporte", "Salud"]:
+                        if col_req not in pivot.columns:
+                            pivot[col_req] = 0.0
+                            
+                    if "Mes" in pivot.columns and "Inflacion_Mensual" in pivot.columns:
+                        return pivot.sort_values(by=["anio", "mes"]).reset_index(drop=True)
 
     except Exception as e:
-        print(f"Error conectando con la API del INDEC: {e}")
+        print(f"Error: {e}")
 
     return pd.DataFrame()
