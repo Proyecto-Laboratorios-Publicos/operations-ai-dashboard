@@ -66,7 +66,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y BLINDAJE CONTRA CARACTERES ---
+    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y LIMPIEZA SEGURA ---
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -74,20 +74,17 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
             
-            # Limpieza total de caracteres que confunden al parser de ReportLab
-            linea_limpia = linea_limpia.replace("=", " - ").replace("$", "").replace("■", " ")
-            
             if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
                 sub_txt = linea_limpia.replace("#", "").strip()
                 story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
             else:
-                # Primero escapamos todo el texto de forma segura para HTML
-                texto_escapado = html.escape(linea_limpia)
-                # Luego reemplazamos las negritas de markdown por etiquetas <b> de ReportLab
-                texto_escapado = texto_escapado.replace("**", "<b>", 1).replace("**", "</b>", 1)
-                texto_escapado = texto_escapado.replace("*", "•")
+                # Sanitizamos todo el texto de forma segura para HTML sin borrar símbolos válidos
+                texto_seguro = html.escape(linea_limpia.replace("**", ""))
+                # Reemplazamos asteriscos sueltos por viñetas prolijas
+                if texto_seguro.startswith("-") or texto_seguro.startswith("*"):
+                    texto_seguro = "• " + texto_seguro[1:].strip()
                 
-                story.append(Paragraph(texto_escapado, estilo_cuerpo))
+                story.append(Paragraph(texto_seguro, estilo_cuerpo))
     
     # Compilamos el documento aplicando la función de fondo beige en cada página
     doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
