@@ -156,9 +156,16 @@ with tab3:
     )
 
 with tab4:
-    st.subheader("💬 Asistente Inteligente de Datos (Groq)")
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        st.subheader("💬 Asistente Inteligente de Datos (Groq)")
+    with col2:
+        if st.button("🔄 Reiniciar"):
+            st.session_state.messages = []
+            st.rerun()
+
     st.markdown("Interactúa en lenguaje natural para analizar los registros y tendencias actuales del INDEC.")
-    
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -175,8 +182,7 @@ with tab4:
             with st.spinner("Analizando series temporales con Groq..."):
                 respuesta = consultar_agente_indec(prompt, resumen_contexto)
                 st.markdown(respuesta)
-        st.session_state.messages.append({"role": "assistant", "content": respuesta})
-
+                st.session_state.messages.append({"role": "assistant", "content": respuesta})
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos")
     st.markdown("Crea resúmenes automáticos listos para copiar a informes de gestión o publicaciones profesionales.")
