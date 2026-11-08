@@ -66,7 +66,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-   # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y LIMPIEZA DE CARACTERES ---
+    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y BLINDAJE CONTRA CARACTERES ---
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -74,18 +74,21 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
             
-            # Limpiar caracteres conflictivos que generan cuadrados negros en ReportLab
-            linea_limpia = linea_limpia.replace("=", " ").replace("", "").replace("■", " ")
+            # Limpieza total de caracteres que confunden al parser de ReportLab
+            linea_limpia = linea_limpia.replace("=", " - ").replace("$", "").replace("■", " ")
             
             if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
                 sub_txt = linea_limpia.replace("#", "").strip()
                 story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
             else:
-                formateado = linea_limpia.replace("**", "<b>", 1).replace("**", "</b>", 1)
-                formateado = formateado.replace("*", "•")
-                texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
-                story.append(Paragraph(texto_seguro, estilo_cuerpo))
-
+                # Primero escapamos todo el texto de forma segura para HTML
+                texto_escapado = html.escape(linea_limpia)
+                # Luego reemplazamos las negritas de markdown por etiquetas <b> de ReportLab
+                texto_escapado = texto_escapado.replace("**", "<b>", 1).replace("**", "</b>", 1)
+                texto_escapado = texto_escapado.replace("*", "•")
+                
+                story.append(Paragraph(texto_escapado, estilo_cuerpo))
+    
     # Compilamos el documento aplicando la función de fondo beige en cada página
     doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
     pdf_bytes = buffer.getvalue()
