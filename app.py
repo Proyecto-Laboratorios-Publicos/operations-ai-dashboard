@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from indec_data import obtener_datos_inflacion
+from groq_agent import consultar_agente_indec
 
 # Configuración inicial de la página en modo ancho
 st.set_page_config(
@@ -12,8 +13,8 @@ st.set_page_config(
 
 st.title("📊 Panel de Análisis Oficial - IPC INDEC")
 st.markdown("""
-Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC.
-Explora las series temporales oficiales explotando todos los campos disponibles.
+Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC. 
+Explora las series temporales oficiales explotando todos los campos disponibles y potenciada con Inteligencia Artificial.
 """)
 
 @st.cache_data(ttl=3600)
@@ -64,11 +65,20 @@ st.sidebar.divider()
 st.sidebar.markdown(f"**Registros totales:** {len(df_raw):,}")
 st.sidebar.markdown(f"**Registros filtrados:** {len(df_filtrado):,}")
 
-# Pestañas de análisis estructuradas
-tab1, tab2, tab3 = st.tabs([
-    "📈 Series Temporales por Descripción",
-    "📊 Desglose de Niveles y Códigos",
-    "📋 Explorador de Datos Crudos"
+# Contexto resumido para alimentar a Groq con los datos actuales filtrados
+resumen_contexto = (
+    f"Indicador seleccionado: {tipo_ind_sel}. "
+    f"Total de registros filtrados: {len(df_filtrado)}. "
+    f"Muestra reciente de datos: {df_filtrado.tail(15).to_string()}"
+)
+
+# Pestañas de análisis estructuradas (incluyendo el Dashboard original + Módulos de IA)
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📈 Series Temporales", 
+    "📊 Niveles y Códigos", 
+    "📋 Datos Crudos", 
+    "💬 Asistente IA (Chat)", 
+    "📝 Reportes Ejecutivos"
 ])
 
 with tab1:
@@ -77,7 +87,6 @@ with tab1:
     
     if not df_filtrado.empty and "valor" in df_filtrado.columns and "descripcion" in df_filtrado.columns:
         descripciones = sorted(df_filtrado["descripcion"].dropna().unique().astype(str).tolist())
-        
         default_desc = [d for d in descripciones if "nivel general" in d.lower()]
         if not default_desc:
             default_desc = descripciones[:3] if len(descripciones) >= 3 else descripciones
@@ -90,11 +99,10 @@ with tab1:
         
         if desc_elegidas:
             df_subset = df_filtrado[df_filtrado["descripcion"].isin(desc_elegidas)].copy()
-            
             if not df_subset.empty:
                 df_subset = df_subset.sort_values("periodo")
                 
-                # Gráfico interactivo con Plotly (evita errores de esquema en Altair/Streamlit)
+                # Gráfico interactivo con Plotly
                 fig = px.line(
                     df_subset,
                     x="Periodo_Texto",
@@ -108,7 +116,7 @@ with tab1:
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=20, r=20, t=40, b=20)
                 )
-                st.plotly_chart(fig, width="stretch")
+                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("No hay registros para las categorías seleccionadas.")
         else:
@@ -130,14 +138,14 @@ with tab2:
             df_nivel = df_nivel[df_nivel["nivel"].astype(str) == nivel_sel]
             
         columnas_mostrar = [col for col in ["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"] if col in df_nivel.columns]
-        st.dataframe(df_nivel[columnas_mostrar].drop_duplicates(), width="stretch")
+        st.dataframe(df_nivel[columnas_mostrar].drop_duplicates(), use_container_width=True)
     else:
         st.warning("Sin datos para mostrar en este nivel.")
 
 with tab3:
     st.subheader("Explorador de Datos Crudos Oficiales")
     st.markdown("Visualización directa de la totalidad de columnas devueltas por la API del INDEC.")
-    st.dataframe(df_filtrado, width="stretch")
+    st.dataframe(df_filtrado, use_container_width=True)
     
     csv = df_filtrado.to_csv(index=False).encode("utf-8")
     st.download_button(
@@ -146,3 +154,46 @@ with tab3:
         file_name="ipc_indec_filtrado.csv",
         mime="text/csv",
     )
+
+with tab4:
+    st.subheader("💬 Asistente Inteligente de Datos (Groq)")
+    st.markdown("Interactúa en lenguaje natural para analizar los registros y tendencias actuales del INDEC.")
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if prompt := st.chat_input("Ej: ¿Cuál es el comportamiento de los rubros principales en este dataset?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Analizando series temporales con Groq..."):
+                respuesta = consultar_agente_indec(prompt, resumen_contexto)
+                st.markdown(respuesta)
+        st.session_state.messages.append({"role": "assistant", "content": respuesta})
+
+with tab5:
+    st.subheader("📝 Generador de Reportes Ejecutivos")
+    st.markdown("Crea resúmenes automáticos listos para copiar a informes de gestión o publicaciones profesionales.")
+    
+    tipo_reporte = st.selectbox(
+        "Selecciona el enfoque del reporte:",
+        [
+            "Resumen ejecutivo mensual de inflación",
+            "Análisis técnico de variaciones de precios para LinkedIn",
+            "Nota analítica sobre el comportamiento histórico"
+        ]
+    )
+
+    if st.button("🚀 Generar Reporte con IA"):
+        with st.spinner("Redactando informe ejecutivo..."):
+            prompt_reporte = f"Redacta un informe profesional titulado tipo '{tipo_reporte}' basado estrictamente en los datos del INDEC proporcionados, manteniendo un tono formal, técnico y analítico."
+            informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
+            
+            st.success("¡Informe generado con éxito!")
+            st.text_area("Resultado para copiar:", value=informe_generado, height=300)
