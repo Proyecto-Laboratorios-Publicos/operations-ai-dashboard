@@ -185,9 +185,10 @@ with tab4:
                 respuesta = consultar_agente_indec(prompt, resumen_contexto)
                 st.markdown(respuesta)
                 st.session_state.messages.append({"role": "assistant", "content": respuesta})
+
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
-    st.markdown("Crea resúmenes automáticos con gráficos integrados y descárgalos directamente en un documento formal.")
+    st.markdown("Crea resúmenes automáticos y descárgalos directamente en un documento formal listo para compartir.")
     tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
         "Resumen ejecutivo mensual de inflación", 
         "Análisis técnico de variaciones de precios para LinkedIn", 
@@ -195,7 +196,7 @@ with tab5:
     ])
     
     if st.button("🚀 Generar Reporte con IA y PDF"):
-        with st.spinner("Redactando informe, generando gráficos analíticos y compilando PDF..."):
+        with st.spinner("Redactando informe ejecutivo y compilando PDF corporativo..."):
             prompt_reporte = (
                 f"Redacta un informe profesional titulado '{tipo_reporte}' "
                 "basado estrictamente en los datos del INDEC proporcionados. "
@@ -210,65 +211,36 @@ with tab5:
             
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         import io
-        import matplotlib.pyplot as plt
-        import seaborn as sns
 
-        # 1. Generar un gráfico visual atractivo con Matplotlib/Seaborn para insertar en el PDF
-        plt.figure(figsize=(6, 2.5), dpi=150)
-        sns.set_theme(style="whitegrid")
-        
-        # Tomamos una muestra de los datos filtrados para graficar tendencias
-        if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
-            df_grafico = df_filtrado.tail(10)
-            ax = sns.lineplot(data=df_grafico, x="Periodo_Texto", y="valor", marker="o", color="#1d4ed8", linewidth=2.5)
-            plt.title("Tendencia Reciente del Indicador (INDEC)", fontsize=10, fontweight='bold', color="#111827")
-            plt.xlabel("Período", fontsize=8, color="#374151")
-            plt.ylabel("Valor", fontsize=8, color="#374151")
-            plt.xticks(rotation=30, fontsize=7)
-            plt.yticks(fontsize=7)
-            plt.tight_layout()
-        else:
-            plt.text(0.5, 0.5, "Datos insuficientes para graficar", horizontalalignment='center', verticalalignment='center')
-            plt.axis('off')
-
-        img_buffer = io.BytesIO()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight')
-        img_buffer.seek(0)
-        plt.close()
-
-        # 2. Generación avanzada del PDF con ReportLab
+        # Generación elegante del PDF con ReportLab (sin errores de librerías externas)
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer, 
             pagesize=letter, 
-            rightMargin=40, 
-            leftMargin=40, 
-            topMargin=40, 
-            bottomMargin=40
+            rightMargin=50, 
+            leftMargin=50, 
+            topMargin=50, 
+            bottomMargin=50
         )
         
         styles = getSampleStyleSheet()
 
-        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=2, textColor='#111827')
-        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, spaceAfter=4, spaceBefore=8, textColor='#1d4ed8')
-        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=5, textColor='#374151')
-        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8.5, leading=11, spaceAfter=8, textColor='#6b7280')
+        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=15, spaceAfter=2, textColor='#111827')
+        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#1d4ed8')
+        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9.5, leading=14, spaceAfter=6, textColor='#374151')
+        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=9, leading=12, spaceAfter=14, textColor='#6b7280')
 
         story = []
         
-        # Encabezado formal
+        # Encabezado formal corporativo
         story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
         story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 6))
 
-        # Incrustamos el gráfico generado al inicio del reporte para darle vida visual
-        story.append(RLImage(img_buffer, width=480, height=200))
-        story.append(Spacer(1, 10))
-
-        # Procesamiento limpio del texto del informe
+        # Procesamiento limpio y estructurado del texto del informe
         for linea in st.session_state["ultimo_informe"].split("\n"):
             linea_limpia = linea.strip()
             if linea_limpia:
@@ -288,10 +260,10 @@ with tab5:
         pdf_bytes = buffer.getvalue()
         buffer.close()
         
-        st.success("¡PDF corporativo con gráficos listo para descargar!")
+        st.success("¡PDF ejecutivo optimizado y listo para descargar!")
         st.download_button(
-            label="📥 Descargar Reporte Ejecutivo con Gráfico en PDF", 
+            label="📥 Descargar Reporte Ejecutivo en PDF", 
             data=pdf_bytes, 
-            file_name="reporte_ejecutivo_indec_con_grafico.pdf", 
+            file_name="reporte_ejecutivo_indec.pdf", 
             mime="application/pdf"
         )
