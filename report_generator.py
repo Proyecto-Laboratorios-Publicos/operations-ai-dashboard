@@ -7,7 +7,8 @@ from reportlab.lib import colors
 
 def agregar_fondo_beige(canvas, doc):
     canvas.saveState()
-    canvas.setFillColor(colors.HexColor('#f7f5f0')) # Beige cálido no invasivo
+    # Fondo beige/marfil suave y cálido (cero reflejos molestos)
+    canvas.setFillColor(colors.HexColor('#f5f2eb'))
     canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
     canvas.restoreState()
 
@@ -24,27 +25,28 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
     
     styles = getSampleStyleSheet()
     
-    color_primario = colors.HexColor('#1e293b')
-    color_secundario = colors.HexColor('#0284c7')
-    color_fondo_caja = colors.HexColor('#ffffff')
-    color_borde = colors.HexColor('#e2e8f0')
+    color_primario = colors.HexColor('#0f172a')   # Slate muy oscuro
+    color_secundario = colors.HexColor('#0369a1') # Azul corporativo sobrio
+    color_fondo_caja = colors.HexColor('#ffffff') # Tarjetas interiores limpias
+    color_borde = colors.HexColor('#cbd5e1')      # Borde sutil
     
-    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=color_primario, spaceAfter=2)
+    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=colors.white, spaceAfter=2)
     estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=color_secundario, spaceBefore=8, spaceAfter=4)
     estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=4)
-    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#64748b'))
+    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#cbd5e1'))
 
     story = []
     
-   # 1. Cabecera tipo tarjeta gerencial con fondo azul marino y texto blanco
+    # 1. Cabecera con Azul Metalizado Oscuro y bordes inferiores profundos (Efecto oscurecido anti-flash)
     header_data = [
-        [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", ParagraphStyle('TitBlanco', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=colors.white, spaceAfter=2))],
-        [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", ParagraphStyle('MetaBlanco', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#e2e8f0')))]
+        [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", estilo_titulo)],
+        [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", estilo_meta)]
     ]
     header_table = Table(header_data, colWidths=[540])
     header_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e3a8a')), # Azul marino formal
-        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#1e293b')),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0f172a')), # Azul marino metalizado / casi negro
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#020617')),    # Borde oscuro profundo
+        ('LINEBELOW', (0, 1), (-1, 1), 2, colors.HexColor('#000000')), # Sombra inferior acentuada
         ('PADDING', (0, 0), (-1, -1), 9),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
@@ -63,7 +65,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-    # 3. Procesamiento y limpieza total del texto (Adiós asteriscos y cuadrados)
+    # 3. Procesamiento y limpieza total del texto
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -71,23 +73,17 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
             
-            # Limpieza profunda de caracteres conflictivos
             reemplazos = {"—": "-", "–": "-", "“": '"', "”": '"', "‘": "'", "’": "'", "■": " "}
             for char_malo, char_bueno in reemplazos.items():
                 linea_limpia = linea_limpia.replace(char_malo, char_bueno)
             
-            # Detectar y limpiar títulos con hashes (###)
             if linea_limpia.startswith("#"):
                 sub_txt = linea_limpia.replace("#", "").strip()
                 story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
             else:
-                # Quitamos los asteriscos sueltos de markdown feos y dejamos negritas limpias si las hay
                 texto_limpio = linea_limpia.replace("**", "")
-                
-                # Formatear viñetas prolijas
                 if texto_limpio.startswith("-") or texto_limpio.startswith("*"):
                     texto_limpio = "• " + texto_limpio[1:].strip()
-                
                 story.append(Paragraph(html.escape(texto_limpio), estilo_cuerpo))
 
     doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
