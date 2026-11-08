@@ -10,11 +10,11 @@ def obtener_datos_inflacion():
     if not token:
         raise ValueError("⚠️ No se encontró la variable de entorno INDEC_API_TOKEN configurada.")
     
-    headers = {"Authorization": f"Bearer {token}",
-        "Prefer": "count=exact",
-        "Accept": "application/json"
-    }
-    
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Prefer": "count=exact",
+    "Accept": "application/json"
+}
     all_data = []
     offset = 0
     limit = 1000
