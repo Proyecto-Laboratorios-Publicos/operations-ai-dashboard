@@ -213,23 +213,18 @@ with tab5:
     if st.button("🚀 Generar Reporte con IA y PDF"):
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
-            # Prompt expansivo para exigir un informe técnico robusto de múltiples páginas
+            # Prompt optimizado para reutilizar la información disponible de forma directa y estructurada
             prompt_reporte = (
-                f"Redacta un informe ejecutivo técnico, exhaustivo y de gran extensión titulado '{tipo_reporte}' "
-                f"basado estrictamente en los datos del INDEC proporcionados. "
-                f"El informe debe tener un enfoque analítico riguroso y gerencial, desglosado obligatoriamente en las siguientes 5 secciones completas y detalladas:\n"
-                f"### 1. Resumen Ejecutivo y Marco Metodológico\n"
-                f"(Desarrolla en profundidad un análisis detallado sobre el volumen total de registros analizados, la cobertura temporal, el alcance metodológico y la dirección general de la serie de precios del IPC).\n"
-                f"### 2. Análisis Cuantitativo y Comportamiento Regional Exhaustivo\n"
-                f"(Realiza un desglose analítico individual para cada una de las regiones estadísticas disponibles, detallando sus valores cuantitativos exactos en puntos porcentuales, comparando su evolución mensual y explicitando las brechas detectadas entre zonas líderes y rezagadas).\n"
-                f"### 3. Factores Estructurales y Desvíos Cíclicos\n"
-                f"(Interpreta en detalle qué factores subyacentes explican el comportamiento de las series, evaluando si responden a dinámicas estacionales, presiones de costos o componentes de arrastre previos).\n"
-                f"### 4. Implicancias Macroeconómicas y Sectoriales\n"
-                f"(Evalúa el impacto operativo y macroeconómico de estas variaciones sobre la dinámica inflacionaria general, el poder adquisitivo y las variables monetarias de referencia).\n"
-                f"### 5. Conclusiones y Recomendaciones Tácticas para Analistas\n"
-                f"(Proporciona un listado completo y detallado de viñetas con acciones de seguimiento, tableros de control y pautas estratégicas para el equipo de análisis económico).\n\n"
-                f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|). "
-                f"Usa únicamente los títulos con el prefijo ###, párrafos redactados en extenso y viñetas descriptivas detalladas."
+                f"Genera un informe ejecutivo corporativo titulado '{tipo_reporte}' "
+                f"utilizando estrictamente y de forma directa los datos ya provistos en el contexto. "
+                f"Estructura la información de manera concisa y directa en 3 bloques clave:\n"
+                f"### 1. Marco y Volumen de Registros\n"
+                f"(Indica brevemente el total de registros analizados y el período temporal cubierto).\n"
+                f"### 2. Desglose Cuantitativo Regional\n"
+                f"(Presenta en formato de lista los valores y variaciones exactas de cada región disponibles en los datos).\n"
+                f"### 3. Conclusiones y Pautas Operativas\n"
+                f"(Menciona 2 conclusiones directas para la toma de decisiones).\n\n"
+                f"REGLA ESTRICTA: No inventes datos ni repitas texto de relleno. Inova los registros ya disponibles de forma esquemática y directa."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
