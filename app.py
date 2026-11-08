@@ -1,3 +1,4 @@
+import html
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -250,17 +251,18 @@ with tab5:
         story.append(Paragraph(f"<b>INFORME EJECUTIVO - INDEC</b>", estilo_titulo))
         story.append(Paragraph(f"<b>Enfoque:</b> {tipo_reporte}", estilo_cuerpo))
         story.append(Spacer(1, 10))
+        
+        # --- Bucle blindado para armar el PDF sin errores de etiquetas ---
+    for linea in st.session_state["ultimo_informe"].split("\n"):
+        if linea.strip():
+            # Limpiamos asteriscos y escapamos de forma segura cualquier entidad HTML
+            texto_limpio = linea.strip().replace("*", "")
+            texto_seguro = html.escape(texto_limpio)
+            story.append(Paragraph(texto_seguro, estilo_cuerpo))
 
-        # Procesar párrafo por párrafo para el PDF
-        for linea in st.session_state["ultimo_informe"].split("\n"):
-            if linea.strip():
-                # Reemplazamos formato Markdown básico para que ReportLab no falle
-                texto_limpio = linea.replace("**", "<b>").replace("</b>", "</b>")
-                story.append(Paragraph(texto_limpio, estilo_cuerpo))
-
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+            doc.build(story)
+            pdf_bytes = buffer.getvalue()
+            buffer.close()
 
         st.download_button(
             label="📥 Descargar Reporte en PDF",
