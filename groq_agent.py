@@ -29,7 +29,7 @@ def consultar_agente_indec(prompt_usuario, dataframe_resumen=""):
                 {"role": "user", "content": prompt_usuario}
             ],
             temperature=0.3,
-            max_tokens=1024,
+            max_tokens=4096,
         )
         return completion.choices[0].message.content
     except Exception as e:
