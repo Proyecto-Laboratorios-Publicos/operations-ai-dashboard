@@ -126,6 +126,37 @@ with tab3:
     st.download_button(label="📥 Descargar CSV Filtrado", data=csv, file_name="ipc_indec_filtrado.csv", mime="text/css")
 
 with tab4:
+    # Inyección de estilos CSS modernos exclusivos para el chat y la tarjeta superior
+    st.markdown("""
+        <style>
+            /* Contenedor general del chat */
+            .stChatMessage {
+                padding: 1rem;
+                border-radius: 12px;
+                margin-bottom: 0.8rem;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                border: 1px solid #e2e8f0;
+            }
+            /* Burbuja del usuario */
+            [data-testid="stChatMessage-user"] {
+                background-color: #f0f9ff !important;
+                border-color: #bae6fd !important;
+            }
+            /* Burbuja del asistente (Groq) */
+            [data-testid="stChatMessage-assistant"] {
+                background-color: #ffffff !important;
+                border-color: #cbd5e1 !important;
+            }
+            /* Caja de entrada de texto del chat */
+            .stChatInputContainer {
+                border-radius: 12px;
+                border: 1px solid #cbd5e1;
+                background-color: #ffffff;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns([6, 1])
     with col1:
         st.subheader("💬 Asistente Inteligente de Datos (Groq)")
@@ -133,22 +164,34 @@ with tab4:
         if st.button("🔄 Reiniciar"):
             st.session_state.messages = []
             st.rerun()
-    st.markdown("Interactúa en lenguaje natural para analizar los registros y tendencias actuales del INDEC.")
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    if prompt := st.chat_input("Ej: ¿Cuál es el comportamiento de los rubros principales en este dataset?"):
+            
+    st.markdown("Interactúa en lenguaje natural para analizar los registros, tendencias y anomalías del INDEC con IA de alta velocidad.")
+    st.divider()
+
+    # Contenedor con altura controlada y scroll prolijo para el historial
+    chat_container = st.container()
+    with chat_container:
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+            
+        if not st.session_state.messages:
+            st.info("💡 **Sugerencia:** Prueba preguntando algo como: *'¿Cuál fue la región con mayor incremento y qué rubro lideró la suba?'*")
+
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"], avatar="🧑‍💻" if message["role"] == "user" else "🤖"):
+                st.markdown(message["content"])
+
+    if prompt := st.chat_input("Escribe tu consulta analítica sobre el INDEC..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="🧑‍💻"):
             st.markdown(prompt)
-        with st.chat_message("assistant"):
-            with st.spinner("Analizando series temporales con Groq..."):
+            
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Procesando datos y redactando análisis con Groq..."):
                 respuesta = consultar_agente_indec(prompt, resumen_contexto)
                 st.markdown(respuesta)
-                st.session_state.messages.append({"role": "assistant", "content": respuesta})
-
+        st.session_state.messages.append({"role": "assistant", "content": respuesta})
+        
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
     st.markdown("Crea resúmenes automáticos con gráficos integrados y descárgalos en un documento formal de nivel ejecutivo.")
