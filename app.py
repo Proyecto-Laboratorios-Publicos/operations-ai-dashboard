@@ -126,7 +126,7 @@ with tab3:
     st.download_button(label="📥 Descargar CSV Filtrado", data=csv, file_name="ipc_indec_filtrado.csv", mime="text/css")
 
 with tab4:
-    # Inyección de estilos CSS modernos exclusivos para el chat y la tarjeta superior
+    # Inyección de estilos CSS modernos y el contenedor scrollable para el chat
     st.markdown("""
         <style>
             /* Contenedor general del chat */
@@ -154,6 +154,13 @@ with tab4:
                 background-color: #ffffff;
                 box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
             }
+            /* Contenedor scrollable interno para limitar la altura del historial */
+            .chat-scroll-container {
+                max-height: 480px;
+                overflow-y: auto;
+                padding-right: 10px;
+                margin-bottom: 1rem;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -168,15 +175,15 @@ with tab4:
     st.markdown("Interactúa en lenguaje natural para analizar los registros, tendencias y anomalías del INDEC con IA de alta velocidad.")
     st.divider()
 
-    # Contenedor con altura controlada y scroll prolijo para el historial
-    chat_container = st.container()
-    with chat_container:
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-            
-        if not st.session_state.messages:
-            st.info("💡 **Sugerencia:** Prueba preguntando algo como: *'¿Cuál fue la región con mayor incremento y qué rubro lideró la suba?'*")
+    # Historial de chat con altura fija y barra de desplazamiento integrada
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
+    if not st.session_state.messages:
+        st.info("💡 **Sugerencia:** Prueba preguntando algo como: *'¿Cuál fue la región con mayor incremento y qué rubro lideró la suba?'*")
+
+    # Contenedor con scroll vertical exclusivo para los mensajes
+    with st.container(height=480, border=False):
         for message in st.session_state.messages:
             with st.chat_message(message["role"], avatar="🧑‍💻" if message["role"] == "user" else "🤖"):
                 st.markdown(message["content"])
@@ -191,6 +198,7 @@ with tab4:
                 respuesta = consultar_agente_indec(prompt, resumen_contexto)
                 st.markdown(respuesta)
         st.session_state.messages.append({"role": "assistant", "content": respuesta})
+        st.rerun() # Recarga instantánea para que el scroll capture el nuevo mensaje
         
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
