@@ -148,14 +148,8 @@ with tab3:
     st.subheader("Explorador de Datos Crudos Oficiales")
     st.markdown("Visualización directa de la totalidad de columnas devueltas por la API del INDEC.")
     st.dataframe(df_filtrado, use_container_width=True)
-    
     csv = df_filtrado.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="📥 Descargar CSV Filtrado",
-        data=csv,
-        file_name="ipc_indec_filtrado.csv",
-        mime="text/csv",
-    )
+    st.download_button(label="📥 Descargar CSV Filtrado", data=csv, file_name="ipc_indec_filtrado.csv", mime="text/css")
 
 with tab4:
     col1, col2 = st.columns([6, 1])
@@ -165,21 +159,16 @@ with tab4:
         if st.button("🔄 Reiniciar"):
             st.session_state.messages = []
             st.rerun()
-
     st.markdown("Interactúa en lenguaje natural para analizar los registros y tendencias actuales del INDEC.")
-
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-
     if prompt := st.chat_input("Ej: ¿Cuál es el comportamiento de los rubros principales en este dataset?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
-
         with st.chat_message("assistant"):
             with st.spinner("Analizando series temporales con Groq..."):
                 respuesta = consultar_agente_indec(prompt, resumen_contexto)
@@ -188,7 +177,7 @@ with tab4:
 
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
-    st.markdown("Crea resúmenes automáticos y descárgalos directamente en un documento formal listo para compartir.")
+    st.markdown("Crea resúmenes automáticos con gráficos integrados y descárgalos en un documento formal de nivel ejecutivo.")
     tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
         "Resumen ejecutivo mensual de inflación", 
         "Análisis técnico de variaciones de precios para LinkedIn", 
@@ -196,7 +185,7 @@ with tab5:
     ])
     
     if st.button("🚀 Generar Reporte con IA y PDF"):
-        with st.spinner("Redactando informe ejecutivo y compilando PDF corporativo..."):
+        with st.spinner("Redactando informe, generando gráficos analíticos y compilando PDF corporativo..."):
             prompt_reporte = (
                 f"Redacta un informe profesional titulado '{tipo_reporte}' "
                 "basado estrictamente en los datos del INDEC proporcionados. "
@@ -211,36 +200,53 @@ with tab5:
             
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         import io
 
-        # Generación elegante del PDF con ReportLab (sin errores de librerías externas)
+        # Generamos un gráfico elegante con Plotly y lo convertimos a imagen para el PDF
+        img_bytes = None
+        if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
+            df_chart = df_filtrado.tail(12)
+            fig_pdf = px.line(
+                df_chart, x="Periodo_Texto", y="valor", markers=True,
+                title=f"<b>Tendencia Reciente - {tipo_ind_sel}</b>",
+                labels={"Periodo_Texto": "Período", "valor": "Valor"}
+            )
+            fig_pdf.update_layout(
+                width=650, height=240,
+                margin=dict(l=30, r=30, t=40, b=30),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=10)
+            )
+            try:
+                img_bytes = fig_pdf.to_image(format="png", scale=2)
+            except Exception:
+                img_bytes = None
+
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
-            buffer, 
-            pagesize=letter, 
-            rightMargin=50, 
-            leftMargin=50, 
-            topMargin=50, 
-            bottomMargin=50
+            buffer, pagesize=letter, 
+            rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40
         )
         
         styles = getSampleStyleSheet()
-
-        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=15, spaceAfter=2, textColor='#111827')
-        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#1d4ed8')
-        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9.5, leading=14, spaceAfter=6, textColor='#374151')
-        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=9, leading=12, spaceAfter=14, textColor='#6b7280')
+        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=2, textColor='#111827')
+        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, spaceAfter=4, spaceBefore=8, textColor='#1d4ed8')
+        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=5, textColor='#374151')
+        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8.5, leading=11, spaceAfter=8, textColor='#6b7280')
 
         story = []
-        
-        # Encabezado formal corporativo
         story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
         story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
-        # Procesamiento limpio y estructurado del texto del informe
+        # Incrustamos el gráfico corporativo en el PDF si se pudo generar
+        if img_bytes:
+            story.append(RLImage(io.BytesIO(img_bytes), width=480, height=180))
+            story.append(Spacer(1, 10))
+
+        # Procesamiento limpio del texto
         for linea in st.session_state["ultimo_informe"].split("\n"):
             linea_limpia = linea.strip()
             if linea_limpia:
@@ -260,10 +266,10 @@ with tab5:
         pdf_bytes = buffer.getvalue()
         buffer.close()
         
-        st.success("¡PDF ejecutivo optimizado y listo para descargar!")
+        st.success("¡PDF corporativo con gráficos integrados listo para descargar!")
         st.download_button(
-            label="📥 Descargar Reporte Ejecutivo en PDF", 
+            label="📥 Descargar Reporte Ejecutivo con Gráfico en PDF", 
             data=pdf_bytes, 
-            file_name="reporte_ejecutivo_indec.pdf", 
+            file_name="reporte_ejecutivo_indec_con_grafico.pdf", 
             mime="application/pdf"
         )
