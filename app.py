@@ -213,9 +213,7 @@ with tab5:
             st.success("¡Informe generado con éxito!")
 
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        st.text_area("Resultado del informe:", value=st.session_state["ultimo_informe"], height=200)
-
-        # Generación del PDF con ReportLab
+        # Generación directa del PDF limpio (sin mostrar el texto plano feo en pantalla)
         from reportlab.lib.pagesizes import letter
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -224,48 +222,40 @@ with tab5:
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
-        
-        # Estilos personalizados limpios
-        estilo_titulo = ParagraphStyle(
-            'TituloPDF',
-            parent=styles['Heading1'],
-            fontName='Helvetica-Bold',
-            fontSize=16,
-            spaceAfter=12,
-            textColor='#1f2937'
-        )
-        estilo_cuerpo = ParagraphStyle(
-            'CuerpoPDF',
-            parent=styles['Normal'],
-            fontName='Helvetica',
-            fontSize=10,
-            leading=14,
-            spaceAfter=8,
-            textColor='#374151'
-        )
+
+        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=10, textColor='#1f2937')
+        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#2563eb')
+        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=6, textColor='#374151')
 
         story = []
-        story.append(Paragraph(f"<b>INFORME EJECUTIVO - INDEC</b>", estilo_titulo))
+        story.append(Paragraph("<b>INFORME EJECUTIVO - INDEC</b>", estilo_titulo))
         story.append(Paragraph(f"<b>Enfoque:</b> {tipo_reporte}", estilo_cuerpo))
         story.append(Spacer(1, 10))
-        
-        # Verificamos que el informe exista antes de intentar armar el PDF
-        if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-            # --- Bucle para armar el PDF de forma segura ---
-            for linea in st.session_state["ultimo_informe"].split("\n"):
-                if linea.strip():
-                    texto_seguro = html.escape(linea.strip())
+
+        # Procesamiento limpio línea por línea para el PDF
+        for linea in st.session_state["ultimo_informe"].split("\n"):
+            linea_limpia = linea.strip()
+            if linea_limpia:
+                # Detectar subtítulos de la IA (ej: ### 3.1 Patagonia)
+                if linea_limpia.startswith("###"):
+                    sub_txt = linea_limpia.replace("###", "").strip()
+                    story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
+                else:
+                    # Reemplazar formato markdown de negritas (**texto**) por etiquetas de ReportLab (<b>texto</b>)
+                    formateado = linea_limpia.replace("**", "<b>", 1).replace("**", "</b>", 1)
+                    # Limpiar asteriscos sueltos sobrantes
+                    formateado = formateado.replace("*", "")
+                    texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
                     story.append(Paragraph(texto_seguro, estilo_cuerpo))
-        else:
-            story.append(Paragraph("Por favor, genera primero un informe en el chat de la IA antes de descargar el PDF.", estilo_cuerpo))
 
         doc.build(story)
         pdf_bytes = buffer.getvalue()
         buffer.close()
-
+        
+        st.success("¡Informe generado y PDF listo para descargar!")
         st.download_button(
-            label="📥 Descargar Reporte en PDF",
-            data=pdf_bytes,
-            file_name="reporte_ejecutivo_indec.pdf",
+            label="📥 Descargar Reporte Ejecutivo en PDF", 
+            data=pdf_bytes, 
+            file_name="reporte_ejecutivo_indec.pdf", 
             mime="application/pdf"
         )
