@@ -45,13 +45,12 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
     color_fondo_caja = colors.HexColor('#ffffff')
     color_borde = colors.HexColor('#cbd5e1')
     
-    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=colors.white, spaceAfter=2)
-    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#0369a1'), spaceBefore=10, spaceAfter=4, keepWithNext=True)
-    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=5)
-    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#cbd5e1'))
-    estilo_th = ParagraphStyle('TH', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.white)
-    estilo_td = ParagraphStyle('TD', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#334155'))
-
+    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=12, textColor=colors.white, spaceAfter=2)
+    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=9.5, textColor=colors.HexColor('#0369a1'), spaceBefore=12, spaceAfter=6, keepWithNext=True)
+    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=11.5, textColor=colors.HexColor('#334155'), spaceAfter=6)
+    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#cbd5e1'))
+    estilo_th = ParagraphStyle('TH', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8, textColor=colors.white)
+    estilo_td = ParagraphStyle('TD', parent=styles['Normal'], fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#334155'))
     story = []
     
     # 1. Cabecera azul metalizado oscuro (anti-flash)
