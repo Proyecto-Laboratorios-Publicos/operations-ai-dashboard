@@ -17,7 +17,7 @@ Plataforma analítica conectada directamente al [Índice de Precios al Consumido
 Explora las series temporales oficiales explotando todos los campos disponibles y potenciada con Inteligencia Artificial.
 """)
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=2592000)  # Caché por 30 días
 def cargar_datos():
     return obtener_datos_inflacion()
 
