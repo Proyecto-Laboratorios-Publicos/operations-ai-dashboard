@@ -252,13 +252,22 @@ with tab5:
         story.append(Paragraph(f"<b>Enfoque:</b> {tipo_reporte}", estilo_cuerpo))
         story.append(Spacer(1, 10))
         
-        # --- Bucle blindado para armar el PDF sin errores de etiquetas ---
+        # --- Bucle para dar formato HTML seguro al PDF ---
     for linea in st.session_state["ultimo_informe"].split("\n"):
         if linea.strip():
-            # Limpiamos asteriscos y escapamos de forma segura cualquier entidad HTML
-            texto_limpio = linea.strip().replace("*", "")
-            texto_seguro = html.escape(texto_limpio)
-            story.append(Paragraph(texto_seguro, estilo_cuerpo))
+            texto = linea.strip()
+            
+            # Detectamos si es un título principal (empieza con ###)
+            if texto.startswith("###"):
+                texto_limpio = texto.replace("###", "").strip()
+                story.append(Spacer(1, 8))
+                story.append(Paragraph(f"<b>{html.escape(texto_limpio)}</b>", estilo_titulo))
+            else:
+                # Reemplazamos las negritas de markdown (**texto**) por negritas HTML (<b>texto</b>)
+                texto_fmt = texto.replace("**", "<b>", 1).replace("**", "</b>", 1)
+                # Escapamos el resto de caracteres especiales de forma segura
+                texto_seguro = html.escape(texto_fmt).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+                story.append(Paragraph(texto_seguro, estilo_cuerpo))
 
             doc.build(story)
             pdf_bytes = buffer.getvalue()
