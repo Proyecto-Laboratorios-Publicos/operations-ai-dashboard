@@ -36,17 +36,17 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
 
     story = []
     
-    # 1. Cabecera tipo tarjeta gerencial
+   # 1. Cabecera tipo tarjeta gerencial con fondo azul marino y texto blanco
     header_data = [
-        [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", estilo_titulo)],
-        [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", estilo_meta)]
+        [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", ParagraphStyle('TitBlanco', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=colors.white, spaceAfter=2))],
+        [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", ParagraphStyle('MetaBlanco', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#e2e8f0')))]
     ]
     header_table = Table(header_data, colWidths=[540])
     header_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), color_fondo_caja),
-        ('BOX', (0, 0), (-1, -1), 1, color_borde),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e3a8a')), # Azul marino formal
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#1e293b')),
+        ('PADDING', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(header_table)
     story.append(Spacer(1, 8))
