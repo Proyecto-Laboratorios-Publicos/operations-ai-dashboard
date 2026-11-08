@@ -213,19 +213,23 @@ with tab5:
     if st.button("🚀 Generar Reporte con IA y PDF"):
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
-            # Prompt enriquecido para garantizar un informe profundo, de nivel gerencial y con cuerpo completo
+            # Prompt expansivo para exigir un informe técnico robusto de múltiples páginas
             prompt_reporte = (
-                f"Redacta un informe ejecutivo profesional, profundo y detallado titulado '{tipo_reporte}' "
+                f"Redacta un informe ejecutivo técnico, exhaustivo y de gran extensión titulado '{tipo_reporte}' "
                 f"basado estrictamente en los datos del INDEC proporcionados. "
-                f"El informe debe tener un enfoque analítico riguroso y gerencial, estructurándose obligatoriamente en 3 secciones completas:\n"
-                f"### 1. Resumen Ejecutivo y Tendencia\n"
-                f"(Desarrolla con detalle el volumen total de registros analizados, el período temporal cubierto y un análisis profundo sobre la dirección general de la serie de precios).\n"
-                f"### 2. Análisis Cuantitativo Regional\n"
-                f"(Analiza a fondo el comportamiento de las principales regiones, detalla los valores exactos en puntos porcentuales de las líderes, explica las brechas detectadas y el impacto comparativo).\n"
-                f"### 3. Conclusiones y Recomendaciones Tácticas\n"
-                f"(Proporciona viñetas detalladas con acciones concretas, de seguimiento y control estratégico para los analistas económicos).\n\n"
+                f"El informe debe tener un enfoque analítico riguroso y gerencial, desglosado obligatoriamente en las siguientes 5 secciones completas y detalladas:\n"
+                f"### 1. Resumen Ejecutivo y Marco Metodológico\n"
+                f"(Desarrolla en profundidad un análisis detallado sobre el volumen total de registros analizados, la cobertura temporal, el alcance metodológico y la dirección general de la serie de precios del IPC).\n"
+                f"### 2. Análisis Cuantitativo y Comportamiento Regional Exhaustivo\n"
+                f"(Realiza un desglose analítico individual para cada una de las regiones estadísticas disponibles, detallando sus valores cuantitativos exactos en puntos porcentuales, comparando su evolución mensual y explicitando las brechas detectadas entre zonas líderes y rezagadas).\n"
+                f"### 3. Factores Estructurales y Desvíos Cíclicos\n"
+                f"(Interpreta en detalle qué factores subyacentes explican el comportamiento de las series, evaluando si responden a dinámicas estacionales, presiones de costos o componentes de arrastre previos).\n"
+                f"### 4. Implicancias Macroeconómicas y Sectoriales\n"
+                f"(Evalúa el impacto operativo y macroeconómico de estas variaciones sobre la dinámica inflacionaria general, el poder adquisitivo y las variables monetarias de referencia).\n"
+                f"### 5. Conclusiones y Recomendaciones Tácticas para Analistas\n"
+                f"(Proporciona un listado completo y detallado de viñetas con acciones de seguimiento, tableros de control y pautas estratégicas para el equipo de análisis económico).\n\n"
                 f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|). "
-                f"Usa únicamente los títulos indicados con ###, párrafos desarrollados y viñetas explicativas."
+                f"Usa únicamente los títulos con el prefijo ###, párrafos redactados en extenso y viñetas descriptivas detalladas."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
