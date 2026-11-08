@@ -132,16 +132,13 @@ with tab1:
 with tab2:
     st.subheader("Estructura por Niveles y Clasificadores")
     st.markdown("Aprovecha los campos de la clave primaria: **clasificador**, **nivel**, **codigo**, **unidad_de_medida**.")
-    
     if not df_filtrado.empty and "nivel" in df_filtrado.columns:
         nivs_unicos = sorted(df_filtrado["nivel"].dropna().unique().tolist(), key=lambda x: str(x))
         niveles_disp = [str(n) for n in nivs_unicos]
         nivel_sel = st.selectbox("Filtrar por Nivel:", options=["Todos"] + niveles_disp)
-        
         df_nivel = df_filtrado.copy()
         if nivel_sel != "Todos":
             df_nivel = df_nivel[df_nivel["nivel"].astype(str) == nivel_sel]
-            
         columnas_mostrar = [col for col in ["clasificador", "nivel", "codigo", "descripcion", "unidad_de_medida", "valor", "observaciones"] if col in df_nivel.columns]
         st.dataframe(df_nivel[columnas_mostrar].drop_duplicates(), use_container_width=True)
     else:
@@ -253,18 +250,18 @@ with tab5:
         story.append(Spacer(1, 10))
         
         # Verificamos que el informe exista antes de intentar armar el PDF
-    if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        # --- Bucle para armar el PDF de forma segura ---
-        for linea in st.session_state["ultimo_informe"].split("\n"):
-            if linea.strip():
-                texto_seguro = html.escape(linea.strip())
-                story.append(Paragraph(texto_seguro, estilo_cuerpo))
-    else:
-        story.append(Paragraph("Por favor, genera primero un informe en el chat de la IA antes de descargar el PDF.", estilo_cuerpo))
+        if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
+            # --- Bucle para armar el PDF de forma segura ---
+            for linea in st.session_state["ultimo_informe"].split("\n"):
+                if linea.strip():
+                    texto_seguro = html.escape(linea.strip())
+                    story.append(Paragraph(texto_seguro, estilo_cuerpo))
+        else:
+            story.append(Paragraph("Por favor, genera primero un informe en el chat de la IA antes de descargar el PDF.", estilo_cuerpo))
 
-            doc.build(story)
-            pdf_bytes = buffer.getvalue()
-            buffer.close()
+        doc.build(story)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
 
         st.download_button(
             label="📥 Descargar Reporte en PDF",
