@@ -66,13 +66,16 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-    # --- 3. CUERPO DEL INFORME ESTRUCTURADO ---
+   # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y LIMPIEZA DE CARACTERES ---
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
         if linea_limpia:
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
+            
+            # Limpiar caracteres conflictivos que generan cuadrados negros en ReportLab
+            linea_limpia = linea_limpia.replace("=", " ").replace("", "").replace("■", " ")
             
             if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
                 sub_txt = linea_limpia.replace("#", "").strip()
