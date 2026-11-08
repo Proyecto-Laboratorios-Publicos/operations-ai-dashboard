@@ -213,19 +213,19 @@ with tab5:
     if st.button("🚀 Generar Reporte con IA y PDF"):
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
-            # Prompt enriquecido para exigir mayor extensión, detalle y profundidad técnica
+            # Prompt enriquecido para garantizar un informe profundo, de nivel gerencial y con cuerpo completo
             prompt_reporte = (
-                f"Redacta un informe ejecutivo profesional y equilibrado titulado '{tipo_reporte}' "
+                f"Redacta un informe ejecutivo profesional, profundo y detallado titulado '{tipo_reporte}' "
                 f"basado estrictamente en los datos del INDEC proporcionados. "
-                f"El informe debe tener un enfoque gerencial directo y estructurarse obligatoriamente en 3 secciones:\n"
+                f"El informe debe tener un enfoque analítico riguroso y gerencial, estructurándose obligatoriamente en 3 secciones completas:\n"
                 f"### 1. Resumen Ejecutivo y Tendencia\n"
-                f"(Detalla el volumen de registros, el período analizado y la dirección general de la serie en 2 líneas breves).\n"
+                f"(Desarrolla con detalle el volumen total de registros analizados, el período temporal cubierto y un análisis profundo sobre la dirección general de la serie de precios).\n"
                 f"### 2. Análisis Cuantitativo Regional\n"
-                f"(Enumera de forma clara mediante viñetas las 3 regiones con mayor incidencia, sus valores exactos en pp y la brecha principal detectada).\n"
+                f"(Analiza a fondo el comportamiento de las principales regiones, detalla los valores exactos en puntos porcentuales de las líderes, explica las brechas detectadas y el impacto comparativo).\n"
                 f"### 3. Conclusiones y Recomendaciones Tácticas\n"
-                f"(Proporciona 2 viñetas cortas y concretas de seguimiento para analistas).\n\n"
+                f"(Proporciona viñetas detalladas con acciones concretas, de seguimiento y control estratégico para los analistas económicos).\n\n"
                 f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|). "
-                f"Usa únicamente los títulos con ### y viñetas breves y directas."
+                f"Usa únicamente los títulos indicados con ###, párrafos desarrollados y viñetas explicativas."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
