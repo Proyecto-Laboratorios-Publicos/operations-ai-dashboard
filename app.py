@@ -188,63 +188,76 @@ with tab4:
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
     st.markdown("Crea resúmenes automáticos y descárgalos directamente en un documento formal listo para compartir.")
-
-    tipo_reporte = st.selectbox(
-        "Selecciona el enfoque del reporte:",
-        [
-            "Resumen ejecutivo mensual de inflación",
-            "Análisis técnico de variaciones de precios para LinkedIn",
-            "Nota analítica sobre el comportamiento histórico"
-        ]
-    )
-
+    tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
+        "Resumen ejecutivo mensual de inflación", 
+        "Análisis técnico de variaciones de precios para LinkedIn", 
+        "Nota analítica sobre el comportamiento histórico"
+    ])
+    
     if st.button("🚀 Generar Reporte con IA y PDF"):
-        with st.spinner("Redactando informe ejecutivo y compilando PDF..."):
+        with st.spinner("Redactando informe ejecutivo y compilando PDF con diseño optimizado..."):
+            # Prompt mejorado para prohibir tablas crudas y exigir prosa y viñetas limpias
             prompt_reporte = (
-                f"Redacta un informe profesional titulado tipo '{tipo_reporte}' "
-                "basado estrictamente en los datos del INDEC proporcionados, "
-                "manteniendo un tono formal, técnico y analítico. "
-                "Utiliza títulos claros y formato limpio."
+                f"Redacta un informe profesional titulado '{tipo_reporte}' "
+                "basado estrictamente en los datos del INDEC proporcionados. "
+                "Mantiene un tono formal, técnico y analítico. "
+                "REGLA ESTRICTA: NO utilices tablas de texto con barras (|) ni caracteres gráficos extraños. "
+                "Utiliza únicamente títulos claros (con prefijo ###), párrafos explicativos bien desarrollados "
+                "y listas con viñetas o guiones cortos para los datos cuantitativos."
             )
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
-            
-            # Guardamos el resultado en el session_state para mantenerlo visible
             st.session_state["ultimo_informe"] = informe_generado
             st.success("¡Informe generado con éxito!")
-
+            
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        # Generación directa del PDF limpio (sin mostrar el texto plano feo en pantalla)
+        # Generación avanzada del PDF con ReportLab
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
         import io
 
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=letter, 
+            rightMargin=45, 
+            leftMargin=45, 
+            topMargin=45, 
+            bottomMargin=45
+        )
+        
         styles = getSampleStyleSheet()
 
-        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=10, textColor='#1f2937')
-        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#2563eb')
-        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=6, textColor='#374151')
+        # Estilos corporativos profesionales
+        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=15, spaceAfter=4, textColor='#111827')
+        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#1d4ed8')
+        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9.5, leading=14, spaceAfter=6, textColor='#374151')
+        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=9, leading=12, spaceAfter=12, textColor='#6b7280')
 
         story = []
-        story.append(Paragraph("<b>INFORME EJECUTIVO - INDEC</b>", estilo_titulo))
-        story.append(Paragraph(f"<b>Enfoque:</b> {tipo_reporte}", estilo_cuerpo))
-        story.append(Spacer(1, 10))
+        
+        # Encabezado formal del reporte
+        story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
+        story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
+        story.append(Spacer(1, 4))
 
-        # Procesamiento limpio línea por línea para el PDF
+        # Procesamiento inteligente del texto generado por la IA
         for linea in st.session_state["ultimo_informe"].split("\n"):
             linea_limpia = linea.strip()
             if linea_limpia:
-                # Detectar subtítulos de la IA (ej: ### 3.1 Patagonia)
-                if linea_limpia.startswith("###"):
-                    sub_txt = linea_limpia.replace("###", "").strip()
+                # Omitir líneas que contengan restos de tablas feas con barras
+                if "|" in linea_limpia or "---" in linea_limpia:
+                    continue
+                
+                # Detectar subtítulos principales
+                if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
+                    sub_txt = linea_limpia.replace("#", "").strip()
                     story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
                 else:
-                    # Reemplazar formato markdown de negritas (**texto**) por etiquetas de ReportLab (<b>texto</b>)
+                    # Convertir formato de negritas y limpiar asteriscos sueltos
                     formateado = linea_limpia.replace("**", "<b>", 1).replace("**", "</b>", 1)
-                    # Limpiar asteriscos sueltos sobrantes
-                    formateado = formateado.replace("*", "")
+                    formateado = formateado.replace("*", "•")  # Cambiar asteriscos sueltos por viñetas elegantes
                     texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
                     story.append(Paragraph(texto_seguro, estilo_cuerpo))
 
@@ -252,7 +265,7 @@ with tab5:
         pdf_bytes = buffer.getvalue()
         buffer.close()
         
-        st.success("¡Informe generado y PDF listo para descargar!")
+        st.success("¡PDF optimizado y listo para descargar!")
         st.download_button(
             label="📥 Descargar Reporte Ejecutivo en PDF", 
             data=pdf_bytes, 
