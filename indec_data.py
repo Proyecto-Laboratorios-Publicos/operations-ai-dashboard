@@ -5,10 +5,10 @@ import requests
 def obtener_datos_inflacion():
     url = "https://api.indec.gob.ar/v1/ipc_nacional"
     
-    token = os.getenv(
-    "INDEC_API_TOKEN",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  <- Token hardcodeado como respaldo
-)
+   # Lectura limpia del token desde las variables de entorno de Streamlit Cloud
+    token = os.getenv("INDEC_API_TOKEN")
+    if not token:
+        raise ValueError("⚠️ No se encontró la variable de entorno INDEC_API_TOKEN configurada.")
     
     headers = {
         "Authorization": f"Bearer {token}",
