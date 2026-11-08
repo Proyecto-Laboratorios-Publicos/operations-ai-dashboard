@@ -66,7 +66,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y LIMPIEZA SEGURA ---
+    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y SANEAMIENTO DE CARACTERES ---
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -74,13 +74,23 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
             
+            # Saneamiento profundo para eliminar símbolos corruptos que generan cuadrados negros
+            reemplazos = {
+                "—": "-", "–": "-", "“": '"', "”": '"', 
+                "‘": "'", "’": "'", "•": "-", " ": " ",
+                "": " ", "■": " "
+            }
+            for char_malo, char_bueno in reemplazos.items():
+                linea_limpia = linea_limpia.replace(char_malo, char_bueno)
+            
             if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
                 sub_txt = linea_limpia.replace("#", "").strip()
                 story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
             else:
-                # Sanitizamos todo el texto de forma segura para HTML sin borrar símbolos válidos
+                # Sanitizamos todo el texto de forma segura para HTML
                 texto_seguro = html.escape(linea_limpia.replace("**", ""))
-                # Reemplazamos asteriscos sueltos por viñetas prolijas
+                
+                # Convertir viñetas sueltas de forma prolija
                 if texto_seguro.startswith("-") or texto_seguro.startswith("*"):
                     texto_seguro = "• " + texto_seguro[1:].strip()
                 
