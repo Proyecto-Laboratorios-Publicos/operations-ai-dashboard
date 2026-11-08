@@ -42,24 +42,17 @@ def crear_tabla_resumen_desde_texto(texto_informe, estilo_celda, estilo_header):
 
 def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes_extra=None):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=letter, 
-        rightMargin=35, 
-        leftMargin=35, 
-        topMargin=35, 
-        bottomMargin=35
-    )
-    
+    # Mantenemos márgenes profesionales pero permitimos que el documento crezca dinámicamente en páginas
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=35, leftMargin=35, topMargin=35, bottomMargin=35)
     styles = getSampleStyleSheet()
+    
     color_fondo_caja = colors.HexColor('#ffffff')
     color_borde = colors.HexColor('#cbd5e1')
     
     estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=colors.white, spaceAfter=2)
-    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#0369a1'), spaceBefore=8, spaceAfter=4)
-    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=4)
+    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#0369a1'), spaceBefore=10, spaceAfter=4, keepWithNext=True)
+    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=5)
     estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#cbd5e1'))
-    
     estilo_th = ParagraphStyle('TH', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.white)
     estilo_td = ParagraphStyle('TD', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#334155'))
 
@@ -79,7 +72,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 8))
 
     # 2. Gráfico principal compacto
     if img_bytes:
@@ -91,15 +84,33 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             ('PADDING', (0, 0), (-1, -1), 3),
         ]))
         story.append(chart_table)
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 6))
 
-    # 2.1 Tabla Resumen Ejecutiva automática
-    tabla_auto = crear_tabla_resumen_desde_texto(texto_informe, estilo_td, estilo_th)
-    if tabla_auto:
-        story.append(tabla_auto)
-        story.append(Spacer(1, 4))
+    # 2.1 Tabla Resumen Ejecutiva automática (captura más filas para aprovechar el espacio)
+    datos = [["Región / Categoria analizada", "Métrica / Variación"]]
+    for linea in texto_informe.split("\n"):
+        match = re.search(r"[•\-]?\s*([A-Za-zÁÉÍÓÚáéíóúñ\s()]+):\s*([0-9]+[.,][0-9]+\s*pp|[0-9]+[.,][0-9]+)", linea)
+        if match:
+            reg = match.group(1).strip()
+            val = match.group(2).strip()
+            if len(reg) < 25 and [reg, val] not in datos:
+                datos.append([reg, val])
+                
+    if len(datos) > 1:
+        # Permitimos hasta 12 filas para mostrar todo el desglose regional en la tabla
+        filas_tabla = [datos[0]] + datos[1:13]
+        t = Table([[Paragraph(cell, estilo_header) if i == 0 else Paragraph(cell, estilo_td) for cell in fila] for i, fila in enumerate(filas_tabla)], colWidths=[320, 200])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0284c7')),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+            ('PADDING', (0, 0), (-1, -1), 5),
+            ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 8))
 
-    # 3. Procesamiento y limpieza del texto
+    # 3. Procesamiento completo del texto sin recortes
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -119,6 +130,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
                     texto_limpio = "• " + texto_limpio[1:].strip()
                 story.append(Paragraph(html.escape(texto_limpio), estilo_cuerpo))
 
+    # Compilación con soporte para múltiples páginas fluidas (fondos aplicados a todas las hojas)
     doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
     pdf_bytes = buffer.getvalue()
     buffer.close()
