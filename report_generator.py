@@ -5,9 +5,16 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RL
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
+# Función para pintar el fondo de la página de color beige suave en cada hoja generada
+def agregar_fondo_beige(canvas, doc):
+    canvas.saveState()
+    # Color beige cálido / marfil muy suave (no invasivo a la vista)
+    canvas.setFillColor(colors.HexColor('#f7f5f0'))
+    canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
+    canvas.restoreState()
+
+def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes_extra=None):
     buffer = io.BytesIO()
-    # Márgenes reducidos para aprovechar mejor el espacio de la hoja (menos blanco)
     doc = SimpleDocTemplate(
         buffer, 
         pagesize=letter, 
@@ -19,20 +26,20 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
     
     styles = getSampleStyleSheet()
     
-    # Paleta corporativa moderna
-    color_primario = colors.HexColor('#0f172a')   # Slate oscuro profesional
-    color_secundario = colors.HexColor('#2563eb') # Azul vibrante
-    color_fondo_caja = colors.HexColor('#f1f5f9') # Gris muy suave para bloques
-    color_borde = colors.HexColor('#cbd5e1')      # Borde sutil
+    # Paleta corporativa armónica con el fondo beige
+    color_primario = colors.HexColor('#1e293b')   # Slate oscuro sobrio
+    color_secundario = colors.HexColor('#0284c7') # Azul profesional
+    color_fondo_caja = colors.HexColor('#ffffff') # Blanco puro para contraste en las tarjetas
+    color_borde = colors.HexColor('#e2e8f0')      # Borde sutil
     
-    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, textColor=color_primario, spaceAfter=2)
-    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, textColor=color_secundario, spaceBefore=6, spaceAfter=4)
-    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, textColor=colors.HexColor('#334155'), spaceAfter=4)
-    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#64748b'))
+    estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=color_primario, spaceAfter=2)
+    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=color_secundario, spaceBefore=6, spaceAfter=3)
+    estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=4)
+    estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#64748b'))
 
     story = []
     
-    # --- 1. CABECERA TIPO TARJETA GERENCIAL (Elimina el blanco superior) ---
+    # --- 1. CABECERA TIPO TARJETA SOBRE FONDO BEIGE ---
     header_data = [
         [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", estilo_titulo)],
         [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", estilo_meta)]
@@ -42,23 +49,22 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
         ('BACKGROUND', (0, 0), (-1, -1), color_fondo_caja),
         ('BOX', (0, 0), (-1, -1), 1, color_borde),
         ('PADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
-    # --- 2. GRÁFICO INTEGRADO EN BLOQUE ---
+    # --- 2. GRÁFICOS VISUALES EN BLOQUE ---
     if img_bytes:
-        # Contenedor visual para el gráfico
-        chart_table = Table([[RLImage(io.BytesIO(img_bytes), width=520, height=170)]], colWidths=[540])
+        chart_table = Table([[RLImage(io.BytesIO(img_bytes), width=520, height=160)]], colWidths=[540])
         chart_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+            ('BACKGROUND', (0, 0), (-1, -1), color_fondo_caja),
             ('BOX', (0, 0), (-1, -1), 0.5, color_borde),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('PADDING', (0, 0), (-1, -1), 4),
         ]))
         story.append(chart_table)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 8))
 
     # --- 3. CUERPO DEL INFORME ESTRUCTURADO ---
     lineas = texto_informe.split("\n")
@@ -77,7 +83,8 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
                 texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
                 story.append(Paragraph(texto_seguro, estilo_cuerpo))
 
-    doc.build(story)
+    # Compilamos el documento aplicando la función de fondo beige en cada página
+    doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
