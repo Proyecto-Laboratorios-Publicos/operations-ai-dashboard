@@ -19,9 +19,12 @@ Explora las series temporales oficiales explotando todos los campos disponibles 
 
 @st.cache_data(ttl=2592000)  # Caché por 30 días
 def cargar_datos():
-    with st.spinner("Conectando con la API del INDEC y procesando series temporales (esto puede tomar unos segundos la primera vez)..."):
-        return obtener_datos_inflacion()
+    with st.spinner("Cargando base de datos oficial del IPC (volando)..."):
+        # Lee directamente el archivo estático ubicado en la raíz del repositorio
+        df = pd.read_csv("ipc_indec_filtrado.csv")
+        return df
 
+# Llamas a la función tal como lo hacías antes
 df_raw = cargar_datos()
 
 # Diagnóstico visual amigable y detallado en caso de fallo de conexión o token
