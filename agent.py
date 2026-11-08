@@ -4,17 +4,17 @@ import streamlit as st
 
 def consultar_agente_deepseek(prompt_usuario, contexto_datos=""):
     """
-    Envía una consulta al modelo de DeepSeek junto con el contexto del DataFrame 
-    filtrado del INDEC para que el agente actúe como un analista de operaciones.
+    Envía una consulta al modelo alojado en Groq junto con el contexto del DataFrame 
+    filtrado del INDEC para que actúe como un analista de operaciones.
     """
-    # Obtenemos la API Key desde los secretos de Streamlit de forma segura
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    # Obtenemos la API Key desde los secretos de Streamlit (puedes nombrar la variable GROQ_API_KEY)
+    api_key = os.getenv("GROQ_API_KEY")
     
     if not api_key:
-        return "⚠️ **Atención:** No se encontró la variable de entorno `DEEPSEEK_API_KEY` en los secretos de Streamlit."
+        return "⚠️ **Atención:** No se encontró la variable de entorno `GROQ_API_KEY` en los secretos de Streamlit."
 
-    # Endpoint oficial de DeepSeek (compatible con OpenAI)
-    url = "https://api.deepseek.com/v1/chat/completions"
+    # Endpoint oficial de Groq (100% compatible con OpenAI)
+    url = "https://api.groq.com/openai/v1/chat/completions"
     
     headers = {
         "Content-Type": "application/json",
@@ -34,7 +34,7 @@ def consultar_agente_deepseek(prompt_usuario, contexto_datos=""):
     ]
 
     payload = {
-        "model": "deepseek-chat",  # O deepseek-reasoner según prefieras
+        "model": "llama-3.3-70b-versatile",  # Uno de los mejores modelos abiertos y gratuitos en Groq
         "messages": messages,
         "temperature": 0.3,
         "stream": False
@@ -46,6 +46,6 @@ def consultar_agente_deepseek(prompt_usuario, contexto_datos=""):
             data = response.json()
             return data["choices"][0]["message"]["content"]
         else:
-            return f"⚠️ Error en la API de DeepSeek (Código {response.status_code}): {response.text}"
+            return f"⚠️ Error en la API de Groq (Código {response.status_code}): {response.text}"
     except Exception as e:
         return f"⚠️ Excepción al conectar con el agente: {str(e)}"
