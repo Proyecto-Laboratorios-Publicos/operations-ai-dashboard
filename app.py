@@ -202,53 +202,67 @@ with tab4:
         
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
-    st.markdown("Crea resúmenes automáticos con gráficos integrados y descárgalos en un documento formal de nivel ejecutivo.")
-    tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
-        "Resumen ejecutivo mensual de inflación", 
-        "Análisis técnico de variaciones de precios para LinkedIn", 
-        "Nota analítica sobre el comportamiento histórico"
-    ])
+    st.markdown("Crea resúmenes automáticos avanzados con gráficos integrados y descárgalos en un documento formal de nivel ejecutivo.")
     
+    tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
+        "Resumen ejecutivo mensual de inflación y análisis regional profundo", 
+        "Análisis técnico de variaciones de precios y proyecciones macroeconómicas", 
+        "Nota analítica sobre el comportamiento histórico y desvíos estacionales"
+    ])
+
     if st.button("🚀 Generar Reporte con IA y PDF"):
-        with st.spinner("Redactando informe, generando gráficos analíticos y compilando PDF corporativo..."):
+        with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
+            
+            # Prompt enriquecido para exigir mayor extensión, detalle y profundidad técnica
             prompt_reporte = (
-                f"Redacta un informe profesional titulado '{tipo_reporte}' "
-                "basado estrictamente en los datos del INDEC proporcionados. "
-                "Mantén un tono formal, técnico y analítico. "
-                "REGLA ESTRICTA: NO utilices tablas de texto con barras (|) ni caracteres gráficos extraños. "
-                "Utiliza únicamente títulos claros (con prefijo ###), párrafos explicativos bien desarrollados "
-                "y listas con viñetas o guiones cortos para los datos cuantitativos."
+                f"Redacta un informe ejecutivo profesional, extenso y altamente detallado titulado '{tipo_reporte}' "
+                f"basado estrictamente en los datos del INDEC proporcionados. "
+                f"El informe debe tener un enfoque riguroso, corporativo y de nivel gerencial, evitando resúmenes superficiales. "
+                f"Estructura el contenido obligatoriamente en las siguientes secciones detalladas:\n"
+                f"### 1. Resumen Ejecutivo y Contexto Metodológico\n"
+                f"(Desarrolla un párrafo analítico profundo sobre el volumen total de registros, el período bajo análisis y la tendencia general detectada).\n"
+                f"### 2. Análisis Cuantitativo y Comportamiento Regional\n"
+                f"(Analiza en detalle las variaciones de cada región, destacando cuáles lideran las subas, cuáles muestran resiliencia y explicando las brechas porcentuales entre ellas).\n"
+                f"### 3. Factores Estructurales y Desvíos Cíclicos\n"
+                f"(Interpreta qué indicadores o rubros explican el comportamiento de la serie y evalúa si responde a factores estacionales o presiones permanentes).\n"
+                f"### 4. Implicancias Macroeconómicas\n"
+                f"(Evalúa el impacto de estas variaciones sobre la política monetaria, fiscal y el poder adquisitivo de los hogares).\n"
+                f"### 5. Conclusiones y Recomendaciones Tácticas\n"
+                f"(Proporciona viñetas con acciones concretas de seguimiento y control para equipos de analistas).\n\n"
+                f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|) ni caracteres gráficos extraños. "
+                f"Utiliza únicamente los títulos indicados con prefijo ### y párrafos explicativos extensos y bien desarrollados combinados con viñetas cortas."
             )
+
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
             st.session_state["ultimo_informe"] = informe_generado
             st.success("¡Informe generado con éxito!")
-            
-    if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        img_bytes = None
-        if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
-            df_chart = df_filtrado.tail(12)
-            fig_pdf = px.line(
-                df_chart, x="Periodo_Texto", y="valor", markers=True,
-                title=f"<b>Tendencia Reciente - {tipo_ind_sel}</b>",
-                labels={"Periodo_Texto": "Período", "valor": "Valor"}
-            )
-            fig_pdf.update_layout(
-                width=650, height=240,
-                margin=dict(l=30, r=30, t=40, b=30),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(size=10)
-            )
-            try:
-                img_bytes = fig_pdf.to_image(format="png", scale=2)
-            except Exception:
-                img_bytes = None
 
-        pdf_bytes = generar_pdf_ejecutivo(tipo_reporte, st.session_state["ultimo_informe"], img_bytes)
-        
-        st.success("¡PDF corporativo con gráficos integrados listo para descargar!")
-        st.download_button(
-            label="📥 Descargar Reporte Ejecutivo con Gráfico en PDF", 
-            data=pdf_bytes, 
-            file_name="reporte_ejecutivo_indec_con_grafico.pdf", 
-            mime="application/pdf"
-        )
+        if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
+            img_bytes = None
+            if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
+                df_chart = df_filtrado.tail(12)
+                fig_pdf = px.line(
+                    df_chart, x="Periodo_Texto", y="valor", markers=True,
+                    title=f"<b>Tendencia Reciente - {tipo_ind_sel}</b>",
+                    labels={"Periodo_Texto": "Período", "valor": "Valor"}
+                )
+                fig_pdf.update_layout(
+                    width=650, height=240,
+                    margin=dict(l=30, r=30, t=40, b=30),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(size=10)
+                )
+                try:
+                    img_bytes = fig_pdf.to_image(format="png", scale=2)
+                except Exception:
+                    img_bytes = None
+
+            pdf_bytes = generar_pdf_ejecutivo(tipo_reporte, st.session_state["ultimo_informe"], img_bytes)
+            st.success("¡PDF corporativo avanzado con gráficos integrados listo para descargar!")
+            st.download_button(
+                label="📥 Descargar Reporte Ejecutivo Avanzado en PDF",
+                data=pdf_bytes,
+                file_name="reporte_ejecutivo_avanzado_indec.pdf",
+                mime="application/pdf"
+            )
