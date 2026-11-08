@@ -214,8 +214,7 @@ with tab5:
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
             # Prompt enriquecido para exigir mayor extensión, detalle y profundidad técnica
-           # Prompt optimizado para un tamaño perfecto que entra completo en el PDF ejecutivo
-           prompt_reporte = (
+            prompt_reporte = (
                 f"Redacta un informe ejecutivo profesional y equilibrado titulado '{tipo_reporte}' "
                 f"basado estrictamente en los datos del INDEC proporcionados. "
                 f"El informe debe tener un enfoque gerencial directo y estructurarse obligatoriamente en 3 secciones:\n"
