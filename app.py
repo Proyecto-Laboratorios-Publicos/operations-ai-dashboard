@@ -213,18 +213,18 @@ with tab5:
     if st.button("🚀 Generar Reporte con IA y PDF"):
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
-            # Prompt optimizado para reutilizar la información disponible de forma directa y estructurada
+            # Prompt optimizado para un volcado estructurado, limpio y sin relleno
             prompt_reporte = (
                 f"Genera un informe ejecutivo corporativo titulado '{tipo_reporte}' "
-                f"utilizando estrictamente y de forma directa los datos ya provistos en el contexto. "
-                f"Estructura la información de manera concisa y directa en 3 bloques clave:\n"
+                f"utilizando directamente la muestra de datos provista en el contexto. "
+                f"Estructura la información de manera clara, formal y directa en 3 secciones obligatorias:\n"
                 f"### 1. Marco y Volumen de Registros\n"
-                f"(Indica brevemente el total de registros analizados y el período temporal cubierto).\n"
-                f"### 2. Desglose Cuantitativo Regional\n"
-                f"(Presenta en formato de lista los valores y variaciones exactas de cada región disponibles en los datos).\n"
+                f"(Indica de forma exacta el total de registros analizados y el período temporal cubierto según los datos).\n"
+                f"### 2. Desglose Cuantitativo y Regional\n"
+                f"(Presenta en viñetas limpias las principales variaciones y métricas cuantitativas disponibles en la muestra, sin agregar texto redundante).\n"
                 f"### 3. Conclusiones y Pautas Operativas\n"
-                f"(Menciona 2 conclusiones directas para la toma de decisiones).\n\n"
-                f"REGLA ESTRICTA: No inventes datos ni repitas texto de relleno. Inova los registros ya disponibles de forma esquemática y directa."
+                f"(Redacta 2 conclusiones y pautas de acción concretas para la toma de decisiones gerenciales).\n\n"
+                f"REGLA ESTRICTA: No inventes notas al pie ni dejes secciones incompletas. Utiliza estrictamente la información numérica provista."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
