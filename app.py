@@ -215,19 +215,18 @@ with tab5:
             
             # Prompt enriquecido para exigir mayor extensión, detalle y profundidad técnica
            # Prompt optimizado para un tamaño perfecto que entra completo en el PDF ejecutivo
-            prompt_reporte = (
-                f"Redacta un informe ejecutivo profesional, riguroso y conciso titulado '{tipo_reporte}' "
+           prompt_reporte = (
+                f"Redacta un informe ejecutivo profesional y equilibrado titulado '{tipo_reporte}' "
                 f"basado estrictamente en los datos del INDEC proporcionados. "
-                f"El informe debe tener un enfoque gerencial y directo. "
-                f"Estructura el contenido obligatoriamente en estas 3 secciones claras:\n"
+                f"El informe debe tener un enfoque gerencial directo y estructurarse obligatoriamente en 3 secciones:\n"
                 f"### 1. Resumen Ejecutivo y Tendencia\n"
-                f"(Describe brevemente el volumen de registros, el período analizado y la dirección general de la serie).\n"
+                f"(Detalla el volumen de registros, el período analizado y la dirección general de la serie en 2 líneas breves).\n"
                 f"### 2. Análisis Cuantitativo Regional\n"
-                f"(Destaca las regiones que lideran las subas, las brechas porcentuales entre ellas y los comportamientos destacados).\n"
+                f"(Enumera de forma clara mediante viñetas las 3 regiones con mayor incidencia, sus valores exactos en pp y la brecha principal detectada).\n"
                 f"### 3. Conclusiones y Recomendaciones Tácticas\n"
-                f"(Proporciona viñetas cortas con acciones de seguimiento para analistas).\n\n"
+                f"(Proporciona 2 viñetas cortas y concretas de seguimiento para analistas).\n\n"
                 f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|). "
-                f"Usa únicamente los títulos indicados con ### y párrafos cortos y precisos combinados con viñetas."
+                f"Usa únicamente los títulos con ### y viñetas breves y directas."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
