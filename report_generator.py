@@ -15,23 +15,19 @@ def agregar_fondo_beige(canvas, doc):
 def crear_tabla_resumen_desde_texto(texto_informe, estilo_celda, estilo_header):
     """Extrae las métricas del texto y construye una tabla estructurada de nivel ejecutivo."""
     datos = [["Región / Categoría analizada", "Métrica / Variación"]]
-    
     for linea in texto_informe.split("\n"):
         match = re.search(r"[•\-]?\s*([A-Za-zÁÉÍÓÚáéíóúñ\s()]+):\s*([0-9]+[.,][0-9]+\s*pp|[0-9]+[.,][0-9]+)", linea)
         if match:
             reg = match.group(1).strip()
             val = match.group(2).strip()
-            # Evitamos duplicados y títulos largos
             if len(reg) < 25 and [reg, val] not in datos:
                 datos.append([reg, val])
                 
-    # Si encontramos suficientes filas de datos, armamos una tabla prolija
     if len(datos) > 1:
-        # Tomamos hasta 6 filas principales para que quede estético
-        filas_tabla = [datos[0]] + datos[1:7]
+        filas_tabla = [datos[0]] + datos[1:13]
         t = Table([[Paragraph(cell, estilo_header) if i == 0 else Paragraph(cell, estilo_celda) for cell in fila] for i, fila in enumerate(filas_tabla)], colWidths=[320, 200])
         t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0284c7')), # Encabezado azul profesional
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0284c7')),
             ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
             ('PADDING', (0, 0), (-1, -1), 5),
