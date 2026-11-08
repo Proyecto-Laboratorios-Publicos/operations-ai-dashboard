@@ -19,7 +19,10 @@ Explora las series temporales oficiales explotando todos los campos disponibles 
 
 @st.cache_data(ttl=2592000)  # Caché por 30 días
 def cargar_datos():
-    return obtener_datos_inflacion()
+    with st.spinner("Conectando con la API del INDEC y procesando series temporales (esto puede tomar unos segundos la primera vez)..."):
+        return obtener_datos_inflacion()
+
+df_raw = cargar_datos()
 
 df_raw = cargar_datos()
 
