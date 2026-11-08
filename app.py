@@ -184,9 +184,9 @@ with tab4:
                 st.markdown(respuesta)
                 st.session_state.messages.append({"role": "assistant", "content": respuesta})
 with tab5:
-    st.subheader("📝 Generador de Reportes Ejecutivos")
-    st.markdown("Crea resúmenes automáticos listos para copiar a informes de gestión o publicaciones profesionales.")
-    
+    st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
+    st.markdown("Crea resúmenes automáticos y descárgalos directamente en un documento formal listo para compartir.")
+
     tipo_reporte = st.selectbox(
         "Selecciona el enfoque del reporte:",
         [
@@ -196,10 +196,71 @@ with tab5:
         ]
     )
 
-    if st.button("🚀 Generar Reporte con IA"):
-        with st.spinner("Redactando informe ejecutivo..."):
-            prompt_reporte = f"Redacta un informe profesional titulado tipo '{tipo_reporte}' basado estrictamente en los datos del INDEC proporcionados, manteniendo un tono formal, técnico y analítico."
+    if st.button("🚀 Generar Reporte con IA y PDF"):
+        with st.spinner("Redactando informe ejecutivo y compilando PDF..."):
+            prompt_reporte = (
+                f"Redacta un informe profesional titulado tipo '{tipo_reporte}' "
+                "basado estrictamente en los datos del INDEC proporcionados, "
+                "manteniendo un tono formal, técnico y analítico. "
+                "Utiliza títulos claros y formato limpio."
+            )
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
             
+            # Guardamos el resultado en el session_state para mantenerlo visible
+            st.session_state["ultimo_informe"] = informe_generado
             st.success("¡Informe generado con éxito!")
-            st.text_area("Resultado para copiar:", value=informe_generado, height=300)
+
+    if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
+        st.text_area("Resultado del informe:", value=st.session_state["ultimo_informe"], height=200)
+
+        # Generación del PDF con ReportLab
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        import io
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+        styles = getSampleStyleSheet()
+        
+        # Estilos personalizados limpios
+        estilo_titulo = ParagraphStyle(
+            'TituloPDF',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=16,
+            spaceAfter=12,
+            textColor='#1f2937'
+        )
+        estilo_cuerpo = ParagraphStyle(
+            'CuerpoPDF',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=10,
+            leading=14,
+            spaceAfter=8,
+            textColor='#374151'
+        )
+
+        story = []
+        story.append(Paragraph(f"<b>INFORME EJECUTIVO - INDEC</b>", estilo_titulo))
+        story.append(Paragraph(f"<b>Enfoque:</b> {tipo_reporte}", estilo_cuerpo))
+        story.append(Spacer(1, 10))
+
+        # Procesar párrafo por párrafo para el PDF
+        for linea in st.session_state["ultimo_informe"].split("\n"):
+            if linea.strip():
+                # Reemplazamos formato Markdown básico para que ReportLab no falle
+                texto_limpio = linea.replace("**", "<b>").replace("</b>", "</b>")
+                story.append(Paragraph(texto_limpio, estilo_cuerpo))
+
+        doc.build(story)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+
+        st.download_button(
+            label="📥 Descargar Reporte en PDF",
+            data=pdf_bytes,
+            file_name="reporte_ejecutivo_indec.pdf",
+            mime="application/pdf"
+        )
