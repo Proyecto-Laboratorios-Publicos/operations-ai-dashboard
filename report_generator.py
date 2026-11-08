@@ -5,11 +5,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RL
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-# Función para pintar el fondo de la página de color beige suave en cada hoja generada
 def agregar_fondo_beige(canvas, doc):
     canvas.saveState()
-    # Color beige cálido / marfil muy suave (no invasivo a la vista)
-    canvas.setFillColor(colors.HexColor('#f7f5f0'))
+    canvas.setFillColor(colors.HexColor('#f7f5f0')) # Beige cálido no invasivo
     canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
     canvas.restoreState()
 
@@ -26,20 +24,19 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
     
     styles = getSampleStyleSheet()
     
-    # Paleta corporativa armónica con el fondo beige
-    color_primario = colors.HexColor('#1e293b')   # Slate oscuro sobrio
-    color_secundario = colors.HexColor('#0284c7') # Azul profesional
-    color_fondo_caja = colors.HexColor('#ffffff') # Blanco puro para contraste en las tarjetas
-    color_borde = colors.HexColor('#e2e8f0')      # Borde sutil
+    color_primario = colors.HexColor('#1e293b')
+    color_secundario = colors.HexColor('#0284c7')
+    color_fondo_caja = colors.HexColor('#ffffff')
+    color_borde = colors.HexColor('#e2e8f0')
     
     estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=13, textColor=color_primario, spaceAfter=2)
-    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=color_secundario, spaceBefore=6, spaceAfter=3)
+    estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10, textColor=color_secundario, spaceBefore=8, spaceAfter=4)
     estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#334155'), spaceAfter=4)
     estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#64748b'))
 
     story = []
     
-    # --- 1. CABECERA TIPO TARJETA SOBRE FONDO BEIGE ---
+    # 1. Cabecera tipo tarjeta gerencial
     header_data = [
         [Paragraph("<b>REPORTE EJECUTIVO OFICIAL - INDEC</b>", estilo_titulo)],
         [Paragraph(f"<b>Enfoque analítico:</b> {tipo_reporte}", estilo_meta)]
@@ -54,7 +51,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
     story.append(header_table)
     story.append(Spacer(1, 8))
 
-    # --- 2. GRÁFICOS VISUALES EN BLOQUE ---
+    # 2. Gráfico integrado en bloque
     if img_bytes:
         chart_table = Table([[RLImage(io.BytesIO(img_bytes), width=520, height=160)]], colWidths=[540])
         chart_table.setStyle(TableStyle([
@@ -66,7 +63,7 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         story.append(chart_table)
         story.append(Spacer(1, 8))
 
-    # --- 3. CUERPO DEL INFORME ESTRUCTURADO Y SANEAMIENTO DE CARACTERES ---
+    # 3. Procesamiento y limpieza total del texto (Adiós asteriscos y cuadrados)
     lineas = texto_informe.split("\n")
     for linea in lineas:
         linea_limpia = linea.strip()
@@ -74,29 +71,25 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
             
-            # Saneamiento profundo para eliminar símbolos corruptos que generan cuadrados negros
-            reemplazos = {
-                "—": "-", "–": "-", "“": '"', "”": '"', 
-                "‘": "'", "’": "'", "•": "-", " ": " ",
-                "": " ", "■": " "
-            }
+            # Limpieza profunda de caracteres conflictivos
+            reemplazos = {"—": "-", "–": "-", "“": '"', "”": '"', "‘": "'", "’": "'", "■": " "}
             for char_malo, char_bueno in reemplazos.items():
                 linea_limpia = linea_limpia.replace(char_malo, char_bueno)
             
-            if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
+            # Detectar y limpiar títulos con hashes (###)
+            if linea_limpia.startswith("#"):
                 sub_txt = linea_limpia.replace("#", "").strip()
                 story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
             else:
-                # Sanitizamos todo el texto de forma segura para HTML
-                texto_seguro = html.escape(linea_limpia.replace("**", ""))
+                # Quitamos los asteriscos sueltos de markdown feos y dejamos negritas limpias si las hay
+                texto_limpio = linea_limpia.replace("**", "")
                 
-                # Convertir viñetas sueltas de forma prolija
-                if texto_seguro.startswith("-") or texto_seguro.startswith("*"):
-                    texto_seguro = "• " + texto_seguro[1:].strip()
+                # Formatear viñetas prolijas
+                if texto_limpio.startswith("-") or texto_limpio.startswith("*"):
+                    texto_limpio = "• " + texto_limpio[1:].strip()
                 
-                story.append(Paragraph(texto_seguro, estilo_cuerpo))
-    
-    # Compilamos el documento aplicando la función de fondo beige en cada página
+                story.append(Paragraph(html.escape(texto_limpio), estilo_cuerpo))
+
     doc.build(story, onFirstPage=agregar_fondo_beige, onLaterPages=agregar_fondo_beige)
     pdf_bytes = buffer.getvalue()
     buffer.close()
