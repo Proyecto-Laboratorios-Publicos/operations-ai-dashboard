@@ -4,6 +4,7 @@ import plotly.express as px
 import streamlit as st
 from indec_data import obtener_datos_inflacion
 from groq_agent import consultar_agente_indec
+from report_generator import generar_pdf_ejecutivo
 
 # Configuración inicial de la página en modo ancho
 st.set_page_config(
@@ -14,36 +15,25 @@ st.set_page_config(
 
 st.title("📊 Panel de Análisis Oficial - IPC INDEC")
 st.markdown("""
-Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC. 
+Plataforma analítica conectada directamente al [Índice de Precios al Consumidor (IPC)](https://api.indec.gob.ar/datasets/ipc_nacional) del INDEC.
 Explora las series temporales oficiales explotando todos los campos disponibles y potenciada con Inteligencia Artificial.
 """)
 
 @st.cache_data(ttl=2592000)  # Caché por 30 días
 def cargar_datos():
     with st.spinner("Cargando base de datos oficial del IPC (volando)..."):
-        # Lee directamente el archivo estático ubicado en la raíz del repositorio
         df = pd.read_csv("ipc_indec_filtrado.csv")
         return df
 
-# Llamas a la función tal como lo hacías antes
 df_raw = cargar_datos()
 
-# Diagnóstico visual amigable y detallado en caso de fallo de conexión o token
 if df_raw.empty:
     st.error("⚠️ **No se pudieron recuperar datos desde la API del INDEC.**")
-    with st.expander("🔍 Guía de resolución de problemas y posibles causas"):
-        st.markdown("""
-        Esto suele ocurrir por las siguientes razones:
-        1. **Token JWT Expirado o Inválido:** El token Bearer configurado en el entorno o en el código ha caducado. Debe generar uno nuevo desde su perfil en el [Catálogo API-INDEC](https://api.indec.gob.ar/account).
-        2. **Límite de cuota o caídas temporales:** El servidor de la API del INDEC podría estar experimentando mantenimiento temporal.
-        3. **Configuración de Variables de Entorno:** Verifique que la variable `INDEC_API_TOKEN` esté configurada correctamente en los secretos de su despliegue en Streamlit Cloud.
-        """)
     st.stop()
 
-# Barra lateral de filtros oficiales basados estrictamente en la documentación
+# Barra lateral de filtros oficiales
 st.sidebar.header("🎛️ Filtros Oficiales API")
 
-# 1. Selector obligatorio de Tipo de Indicador
 if "tipo_de_indicador_descripcion" in df_raw.columns:
     tipos_ind = sorted(df_raw["tipo_de_indicador_descripcion"].dropna().unique().astype(str).tolist())
     tipo_ind_sel = st.sidebar.selectbox("Tipo de Indicador:", options=tipos_ind) if tipos_ind else "General"
@@ -52,14 +42,12 @@ else:
     df_filtrado = df_raw.copy()
     tipo_ind_sel = "General"
 
-# 2. Selector de Región Estadística
 if "region" in df_filtrado.columns:
     regiones = sorted(df_filtrado["region"].dropna().unique().astype(str).tolist())
     region_sel = st.sidebar.selectbox("Región Estadística:", options=["Todas"] + regiones)
     if region_sel != "Todas":
         df_filtrado = df_filtrado[df_filtrado["region"] == region_sel]
 
-# 3. Multiselector de Clasificadores
 if "clasificador" in df_filtrado.columns:
     clasificadores = sorted(df_filtrado["clasificador"].dropna().unique().astype(str).tolist())
     clasificador_sel = st.sidebar.multiselect("Clasificador:", options=clasificadores, default=clasificadores)
@@ -70,14 +58,13 @@ st.sidebar.divider()
 st.sidebar.markdown(f"**Registros totales:** {len(df_raw):,}")
 st.sidebar.markdown(f"**Registros filtrados:** {len(df_filtrado):,}")
 
-# Contexto resumido para alimentar a Groq con los datos actuales filtrados
 resumen_contexto = (
     f"Indicador seleccionado: {tipo_ind_sel}. "
     f"Total de registros filtrados: {len(df_filtrado)}. "
     f"Muestra reciente de datos: {df_filtrado.tail(15).to_string()}"
 )
 
-# Pestañas de análisis estructuradas (incluyendo el Dashboard original + Módulos de IA)
+# Pestañas de análisis estructuradas
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Series Temporales", 
     "📊 Niveles y Códigos", 
@@ -89,31 +76,18 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     st.subheader(f"Evolución Temporal ({tipo_ind_sel})")
     st.markdown("Comportamiento histórico agrupado mediante los campos **periodo** y **Periodo_Texto**.")
-    
     if not df_filtrado.empty and "valor" in df_filtrado.columns and "descripcion" in df_filtrado.columns:
         descripciones = sorted(df_filtrado["descripcion"].dropna().unique().astype(str).tolist())
         default_desc = [d for d in descripciones if "nivel general" in d.lower()]
         if not default_desc:
             default_desc = descripciones[:3] if len(descripciones) >= 3 else descripciones
-            
-        desc_elegidas = st.multiselect(
-            "Seleccionar Categorías / Descripciones:",
-            options=descripciones,
-            default=default_desc
-        )
-        
+        desc_elegidas = st.multiselect("Seleccionar Categorías / Descripciones:", options=descripciones, default=default_desc)
         if desc_elegidas:
             df_subset = df_filtrado[df_filtrado["descripcion"].isin(desc_elegidas)].copy()
             if not df_subset.empty:
                 df_subset = df_subset.sort_values("periodo")
-                
-                # Gráfico interactivo con Plotly
                 fig = px.line(
-                    df_subset,
-                    x="Periodo_Texto",
-                    y="valor",
-                    color="descripcion",
-                    markers=True,
+                    df_subset, x="Periodo_Texto", y="valor", color="descripcion", markers=True,
                     labels={"Periodo_Texto": "Período", "valor": "Valor del Indicador", "descripcion": "Categoría"}
                 )
                 fig.update_layout(
@@ -199,12 +173,6 @@ with tab5:
             st.success("¡Informe generado con éxito!")
             
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        import io
-
-        # Generamos un gráfico elegante con Plotly y lo convertimos a imagen para el PDF
         img_bytes = None
         if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
             df_chart = df_filtrado.tail(12)
@@ -224,47 +192,7 @@ with tab5:
             except Exception:
                 img_bytes = None
 
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buffer, pagesize=letter, 
-            rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40
-        )
-        
-        styles = getSampleStyleSheet()
-        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=2, textColor='#111827')
-        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, spaceAfter=4, spaceBefore=8, textColor='#1d4ed8')
-        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=5, textColor='#374151')
-        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8.5, leading=11, spaceAfter=8, textColor='#6b7280')
-
-        story = []
-        story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
-        story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
-        story.append(Spacer(1, 4))
-
-        # Incrustamos el gráfico corporativo en el PDF si se pudo generar
-        if img_bytes:
-            story.append(RLImage(io.BytesIO(img_bytes), width=480, height=180))
-            story.append(Spacer(1, 10))
-
-        # Procesamiento limpio del texto
-        for linea in st.session_state["ultimo_informe"].split("\n"):
-            linea_limpia = linea.strip()
-            if linea_limpia:
-                if "|" in linea_limpia or "---" in linea_limpia:
-                    continue
-                
-                if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
-                    sub_txt = linea_limpia.replace("#", "").strip()
-                    story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
-                else:
-                    formateado = linea_limpia.replace("**", "<b>", 1).replace("**", "</b>", 1)
-                    formateado = formateado.replace("*", "•")
-                    texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
-                    story.append(Paragraph(texto_seguro, estilo_cuerpo))
-
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+        pdf_bytes = generar_pdf_ejecutivo(tipo_reporte, st.session_state["ultimo_informe"], img_bytes)
         
         st.success("¡PDF corporativo con gráficos integrados listo para descargar!")
         st.download_button(
