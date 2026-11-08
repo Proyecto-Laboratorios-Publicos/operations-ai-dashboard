@@ -23,7 +23,7 @@ def consultar_agente_indec(prompt_usuario, dataframe_resumen=""):
     
     try:
         completion = cliente.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3-8b-8192",
             messages=[
                 {"role": "system", "content": f"{system_prompt}\n\nContexto de datos recientes:\n{dataframe_resumen}"},
                 {"role": "user", "content": prompt_usuario}
