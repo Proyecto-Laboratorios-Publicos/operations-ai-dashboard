@@ -20,9 +20,8 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
     
     # Paleta corporativa elegante
     color_primario = colors.HexColor('#1e3a8a') # Azul oscuro formal
-    color_secundario = colors.HexColor('#3b82f6') # Azul acento
+    color_secundario = colors.HexColor('#2563eb') # Azul acento
     color_texto = colors.HexColor('#1f2937')
-    color_fondo_caja = colors.HexColor('#f8fafc')
     
     estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=15, spaceAfter=2, textColor=color_primario)
     estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor=color_secundario)
@@ -31,15 +30,15 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None):
 
     story = []
     
-    # Encabezado con bloque estilizado (Caja resumen superior)
+    # Encabezado corporativo oficial
     story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
     story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
     story.append(Spacer(1, 4))
 
-    # Incrustar gráfico si está disponible dentro de una estructura visual limpia
+    # Bloque visual del gráfico optimizado para ocupar espacio con elegancia
     if img_bytes:
-        story.append(RLImage(io.BytesIO(img_bytes), width=510, height=190))
-        story.append(Spacer(1, 12))
+        story.append(RLImage(io.BytesIO(img_bytes), width=515, height=190))
+        story.append(Spacer(1, 10))
 
     # Procesamiento y estructuración del texto del informe
     lineas = texto_informe.split("\n")
