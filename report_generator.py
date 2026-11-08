@@ -75,29 +75,29 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0f172a')),
         ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#020617')),
         ('LINEBELOW', (0, 1), (-1, 1), 2, colors.HexColor('#000000')),
-        ('PADDING', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('PADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
-    # 2. Gráfico principal de la app (si viene)
+    # 2. Gráfico principal compacto
     if img_bytes:
-        chart_table = Table([[RLImage(io.BytesIO(img_bytes), width=520, height=150)]], colWidths=[540])
+        chart_table = Table([[RLImage(io.BytesIO(img_bytes), width=500, height=130)]], colWidths=[540])
         chart_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), color_fondo_caja),
             ('BOX', (0, 0), (-1, -1), 0.5, color_borde),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('PADDING', (0, 0), (-1, -1), 4),
+            ('PADDING', (0, 0), (-1, -1), 3),
         ]))
         story.append(chart_table)
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
-    # 2.1 Tabla Resumen Ejecutiva automática extraída del texto
+    # 2.1 Tabla Resumen Ejecutiva automática
     tabla_auto = crear_tabla_resumen_desde_texto(texto_informe, estilo_td, estilo_th)
     if tabla_auto:
         story.append(tabla_auto)
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
     # 3. Procesamiento y limpieza del texto
     lineas = texto_informe.split("\n")
@@ -106,7 +106,6 @@ def generar_pdf_ejecutivo(tipo_reporte, texto_informe, img_bytes=None, img_bytes
         if linea_limpia:
             if "|" in linea_limpia or "---" in linea_limpia:
                 continue
-            
             reemplazos = {"—": "-", "–": "-", "“": '"', "”": '"', "‘": "'", "’": "'", "■": " "}
             for char_malo, char_bueno in reemplazos.items():
                 linea_limpia = linea_limpia.replace(char_malo, char_bueno)
