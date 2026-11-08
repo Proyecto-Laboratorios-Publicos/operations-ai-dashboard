@@ -24,8 +24,6 @@ def cargar_datos():
 
 df_raw = cargar_datos()
 
-df_raw = cargar_datos()
-
 # Diagnóstico visual amigable y detallado en caso de fallo de conexión o token
 if df_raw.empty:
     st.error("⚠️ **No se pudieron recuperar datos desde la API del INDEC.**")
