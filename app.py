@@ -187,7 +187,7 @@ with tab4:
                 st.session_state.messages.append({"role": "assistant", "content": respuesta})
 with tab5:
     st.subheader("📝 Generador de Reportes Ejecutivos en PDF")
-    st.markdown("Crea resúmenes automáticos y descárgalos directamente en un documento formal listo para compartir.")
+    st.markdown("Crea resúmenes automáticos con gráficos integrados y descárgalos directamente en un documento formal.")
     tipo_reporte = st.selectbox("Selecciona el enfoque del reporte:", [
         "Resumen ejecutivo mensual de inflación", 
         "Análisis técnico de variaciones de precios para LinkedIn", 
@@ -195,12 +195,11 @@ with tab5:
     ])
     
     if st.button("🚀 Generar Reporte con IA y PDF"):
-        with st.spinner("Redactando informe ejecutivo y compilando PDF con diseño optimizado..."):
-            # Prompt mejorado para prohibir tablas crudas y exigir prosa y viñetas limpias
+        with st.spinner("Redactando informe, generando gráficos analíticos y compilando PDF..."):
             prompt_reporte = (
                 f"Redacta un informe profesional titulado '{tipo_reporte}' "
                 "basado estrictamente en los datos del INDEC proporcionados. "
-                "Mantiene un tono formal, técnico y analítico. "
+                "Mantén un tono formal, técnico y analítico. "
                 "REGLA ESTRICTA: NO utilices tablas de texto con barras (|) ni caracteres gráficos extraños. "
                 "Utiliza únicamente títulos claros (con prefijo ###), párrafos explicativos bien desarrollados "
                 "y listas con viñetas o guiones cortos para los datos cuantitativos."
@@ -210,54 +209,78 @@ with tab5:
             st.success("¡Informe generado con éxito!")
             
     if "ultimo_informe" in st.session_state and st.session_state["ultimo_informe"]:
-        # Generación avanzada del PDF con ReportLab
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
         import io
+        import matplotlib.pyplot as plt
+        import seaborn as sns
 
+        # 1. Generar un gráfico visual atractivo con Matplotlib/Seaborn para insertar en el PDF
+        plt.figure(figsize=(6, 2.5), dpi=150)
+        sns.set_theme(style="whitegrid")
+        
+        # Tomamos una muestra de los datos filtrados para graficar tendencias
+        if not df_filtrado.empty and "valor" in df_filtrado.columns and "Periodo_Texto" in df_filtrado.columns:
+            df_grafico = df_filtrado.tail(10)
+            ax = sns.lineplot(data=df_grafico, x="Periodo_Texto", y="valor", marker="o", color="#1d4ed8", linewidth=2.5)
+            plt.title("Tendencia Reciente del Indicador (INDEC)", fontsize=10, fontweight='bold', color="#111827")
+            plt.xlabel("Período", fontsize=8, color="#374151")
+            plt.ylabel("Valor", fontsize=8, color="#374151")
+            plt.xticks(rotation=30, fontsize=7)
+            plt.yticks(fontsize=7)
+            plt.tight_layout()
+        else:
+            plt.text(0.5, 0.5, "Datos insuficientes para graficar", horizontalalignment='center', verticalalignment='center')
+            plt.axis('off')
+
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', bbox_inches='tight')
+        img_buffer.seek(0)
+        plt.close()
+
+        # 2. Generación avanzada del PDF con ReportLab
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer, 
             pagesize=letter, 
-            rightMargin=45, 
-            leftMargin=45, 
-            topMargin=45, 
-            bottomMargin=45
+            rightMargin=40, 
+            leftMargin=40, 
+            topMargin=40, 
+            bottomMargin=40
         )
         
         styles = getSampleStyleSheet()
 
-        # Estilos corporativos profesionales
-        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=15, spaceAfter=4, textColor='#111827')
-        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=6, spaceBefore=10, textColor='#1d4ed8')
-        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9.5, leading=14, spaceAfter=6, textColor='#374151')
-        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=9, leading=12, spaceAfter=12, textColor='#6b7280')
+        estilo_titulo = ParagraphStyle('TituloPDF', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=2, textColor='#111827')
+        estilo_subtitulo = ParagraphStyle('SubTituloPDF', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, spaceAfter=4, spaceBefore=8, textColor='#1d4ed8')
+        estilo_cuerpo = ParagraphStyle('CuerpoPDF', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=13, spaceAfter=5, textColor='#374151')
+        estilo_meta = ParagraphStyle('MetaPDF', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8.5, leading=11, spaceAfter=8, textColor='#6b7280')
 
         story = []
         
-        # Encabezado formal del reporte
+        # Encabezado formal
         story.append(Paragraph("<b>INFORME TÉCNICO OFICIAL - INDEC</b>", estilo_titulo))
         story.append(Paragraph(f"<b>Enfoque del análisis:</b> {tipo_reporte}", estilo_meta))
         story.append(Spacer(1, 4))
 
-        # Procesamiento inteligente del texto generado por la IA
+        # Incrustamos el gráfico generado al inicio del reporte para darle vida visual
+        story.append(RLImage(img_buffer, width=480, height=200))
+        story.append(Spacer(1, 10))
+
+        # Procesamiento limpio del texto del informe
         for linea in st.session_state["ultimo_informe"].split("\n"):
             linea_limpia = linea.strip()
             if linea_limpia:
-                # Omitir líneas que contengan restos de tablas feas con barras
                 if "|" in linea_limpia or "---" in linea_limpia:
                     continue
                 
-                # Detectar subtítulos principales
                 if linea_limpia.startswith("###") or linea_limpia.startswith("##"):
                     sub_txt = linea_limpia.replace("#", "").strip()
                     story.append(Paragraph(f"<b>{html.escape(sub_txt)}</b>", estilo_subtitulo))
                 else:
-                    # Convertir formato de negritas y limpiar asteriscos sueltos
                     formateado = linea_limpia.replace("**", "<b>", 1).replace("**", "</b>", 1)
-                    formateado = formateado.replace("*", "•")  # Cambiar asteriscos sueltos por viñetas elegantes
+                    formateado = formateado.replace("*", "•")
                     texto_seguro = html.escape(formateado).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
                     story.append(Paragraph(texto_seguro, estilo_cuerpo))
 
@@ -265,10 +288,10 @@ with tab5:
         pdf_bytes = buffer.getvalue()
         buffer.close()
         
-        st.success("¡PDF optimizado y listo para descargar!")
+        st.success("¡PDF corporativo con gráficos listo para descargar!")
         st.download_button(
-            label="📥 Descargar Reporte Ejecutivo en PDF", 
+            label="📥 Descargar Reporte Ejecutivo con Gráfico en PDF", 
             data=pdf_bytes, 
-            file_name="reporte_ejecutivo_indec.pdf", 
+            file_name="reporte_ejecutivo_indec_con_grafico.pdf", 
             mime="application/pdf"
         )
