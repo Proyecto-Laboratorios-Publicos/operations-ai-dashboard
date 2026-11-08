@@ -214,23 +214,20 @@ with tab5:
         with st.spinner("Redactando informe profundo, generando gráficos analíticos y compilando PDF corporativo..."):
             
             # Prompt enriquecido para exigir mayor extensión, detalle y profundidad técnica
+           # Prompt optimizado para un tamaño perfecto que entra completo en el PDF ejecutivo
             prompt_reporte = (
-                f"Redacta un informe ejecutivo profesional, extenso y altamente detallado titulado '{tipo_reporte}' "
+                f"Redacta un informe ejecutivo profesional, riguroso y conciso titulado '{tipo_reporte}' "
                 f"basado estrictamente en los datos del INDEC proporcionados. "
-                f"El informe debe tener un enfoque riguroso, corporativo y de nivel gerencial, evitando resúmenes superficiales. "
-                f"Estructura el contenido obligatoriamente en las siguientes secciones detalladas:\n"
-                f"### 1. Resumen Ejecutivo y Contexto Metodológico\n"
-                f"(Desarrolla un párrafo analítico profundo sobre el volumen total de registros, el período bajo análisis y la tendencia general detectada).\n"
-                f"### 2. Análisis Cuantitativo y Comportamiento Regional\n"
-                f"(Analiza en detalle las variaciones de cada región, destacando cuáles lideran las subas, cuáles muestran resiliencia y explicando las brechas porcentuales entre ellas).\n"
-                f"### 3. Factores Estructurales y Desvíos Cíclicos\n"
-                f"(Interpreta qué indicadores o rubros explican el comportamiento de la serie y evalúa si responde a factores estacionales o presiones permanentes).\n"
-                f"### 4. Implicancias Macroeconómicas\n"
-                f"(Evalúa el impacto de estas variaciones sobre la política monetaria, fiscal y el poder adquisitivo de los hogares).\n"
-                f"### 5. Conclusiones y Recomendaciones Tácticas\n"
-                f"(Proporciona viñetas con acciones concretas de seguimiento y control para equipos de analistas).\n\n"
-                f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|) ni caracteres gráficos extraños. "
-                f"Utiliza únicamente los títulos indicados con prefijo ### y párrafos explicativos extensos y bien desarrollados combinados con viñetas cortas."
+                f"El informe debe tener un enfoque gerencial y directo. "
+                f"Estructura el contenido obligatoriamente en estas 3 secciones claras:\n"
+                f"### 1. Resumen Ejecutivo y Tendencia\n"
+                f"(Describe brevemente el volumen de registros, el período analizado y la dirección general de la serie).\n"
+                f"### 2. Análisis Cuantitativo Regional\n"
+                f"(Destaca las regiones que lideran las subas, las brechas porcentuales entre ellas y los comportamientos destacados).\n"
+                f"### 3. Conclusiones y Recomendaciones Tácticas\n"
+                f"(Proporciona viñetas cortas con acciones de seguimiento para analistas).\n\n"
+                f"REGLA ESTRICTA: NO utilices tablas de texto con barras (|). "
+                f"Usa únicamente los títulos indicados con ### y párrafos cortos y precisos combinados con viñetas."
             )
 
             informe_generado = consultar_agente_indec(prompt_reporte, resumen_contexto)
